@@ -61,7 +61,7 @@ The raw files are the primary evidence and must not be altered. The MD5, SHA1, a
 ### Mapping Between Formats
 For convinience, the parsed file used integer index as part of the name. Below are the mapping from the raw filenames to the parsed filenames.
 
-| Raw File                                     | SHA-256 Hash |
+| Raw File                                     | Flight Log |
 | -------------------------------------------- | ------------ |
 | DJIFlightRecord\_2024-11-10\_\[03-09-29].txt | `flight_log_1.xlsx`   |
 | DJIFlightRecord\_2025-05-12\_\[08-01-12].txt | `flight_log_2.xlsx`   |
@@ -78,7 +78,7 @@ Each log may contain multiple incident scenarios (e.g., communication issues, ha
 
 | Flight Log          | Problem Type | Key Events |
 | ------------------- | ------------ | ------------ |
-| `flight_log_1.xlsx` | Parameter Violation, Communication Issue   | Gimbal pitch axis endpoint reached.; Image transmission signal weak.; RC signal lost..; |
+| `flight_log_1.xlsx` | Parameter Violation, Communication Issue   | Gimbal pitch axis endpoint reached.; Image transmission signal weak.; RC signal lost.; |
 | `flight_log_2.xlsx` | Parameter Violation, Communication Issue   | Image transmission signal weak.; RC signal lost.; No image transmission.; RC signal weak.; Gimbal pitch axis endpoint reached.; |
 | `flight_log_3.xlsx` | Communication Issue          | Image transmission signal weak.; RC signal lost.; No image transmission.; RC signal weak.; Downlink Lost.; |
 | `flight_log_4.xlsx` | Software Issue, Hardware Issue, Communication Issue          | Gimbal auto check failed.; Gimbal stuck.; Image transmission signal weak.; RC signal lost.; Downlink Lost.; RC signal weak.; |
