@@ -1,0 +1,34 @@
+{
+  "output_dir": "src/cli/outputs",
+  "source_evidence": "src/evidence/decrypted",
+  "wkhtml_path": {
+    "windows": "C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe",
+    "linux": "/usr/bin/wkhtmltopdf"
+  },
+  "model_config": {
+    "embedding_model_name": "swardiantara/DroPTC-all-MiniLM-L6-v2-sentence",
+    "freeze_embedding": false,
+    "idx2label": {
+        "0": "Normal",
+        "1": "SurroundingEnvironment",
+        "2": "HardwareFault",
+        "3": "ParamViolation",
+        "4": "RegulationViolation",
+        "5": "CommunicationIssue",
+        "6": "SoftwareFault"
+    },
+    "label2idx": {
+        "Normal": 0,
+        "SurroundingEnvironment": 1,
+        "HardwareFault": 2,
+        "ParamViolation": 3,
+        "RegulationViolation": 4,
+        "CommunicationIssue": 5,
+        "SoftwareFault": 6
+    },
+    "num_labels": 7,
+    "max_seq_length": 128
+  },
+  "model_dir": "src/cli/model/pytorch_model.pt",
+  "app_version": "v0.1.0"
+}

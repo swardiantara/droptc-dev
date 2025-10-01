@@ -15,7 +15,8 @@ src/evidence/
 │
 ├── decrypted/    # Decrypted logs (derived from raw)
 │     ├── DJIFlightRecord_2025-06-27_[03-34-35].csv
-│     └── ...
+│     ├── ...
+│     └── parse.py     # script to extract timestamp and log messages
 │
 ├── parsed/       # Logs parsed into simplified format (timestamp + message only)
 │     ├── flight_log_1.xlsx

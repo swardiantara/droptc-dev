@@ -1,0 +1,16 @@
+captum==0.8.0
+huggingface_hub==0.33.1
+matplotlib==3.10.6
+numpy
+pandas
+pdfkit==1.0.0
+plotly==6.2.0
+scikit_learn==1.7.2
+seaborn==0.13.2
+sentence_transformers==5.1.1
+torch==2.7.1
+tqdm==4.67.1
+transformers==4.53.0
+umap_learn==0.5.9.post2
+openpyxl
+ipython
