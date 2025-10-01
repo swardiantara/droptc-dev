@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
+import plotly.express as px
 
 
 def cluster_sentences(sentences: pd.DataFrame) -> pd.DataFrame:
@@ -80,3 +81,133 @@ def summarize_evidence(evidence_df: pd.DataFrame, output_dir: str):
     fig2.savefig(cluster_id_output_path)
     plt.close(fig2)
     print(f"Saved cluster ID summary to {cluster_id_output_path}")
+
+
+def create_timeline_chart(evidence_df: pd.DataFrame, output_dir: str):
+    """
+    Generates a Gantt-style timeline chart to visualize the event log.
+
+    Args:
+        evidence_df: A Pandas DataFrame with 'date', 'time', 'problem_type', and 'sentence' columns.
+        output_dir: The directory where the output HTML file will be saved.
+        filename: The base filename for the output HTML file.
+    """
+    # Ensure the output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+
+    # 1. Create a proper timestamp column
+    # Combine date and time columns into a single string
+    time_str = evidence_df['date'].astype(str) + ' ' + evidence_df['time'].astype(str)
+    
+    # Convert to datetime objects, handling the AM/PM format
+    evidence_df['timestamp'] = pd.to_datetime(time_str, format='%m/%d/%Y %I:%M:%S.%f %p')
+
+    # Sort by timestamp to ensure the timeline is in order
+    df = evidence_df.sort_values('timestamp').copy()
+
+    # 2. Create the Gantt-style chart
+    # Plotly's timeline requires a start and end time. For discrete events,
+    # we'll make the end time slightly after the start time to create a small marker.
+    df['timestamp_end'] = df['timestamp'] + pd.to_timedelta(1, unit='s')
+
+    fig = px.timeline(
+        df,
+        x_start="timestamp",
+        x_end="timestamp_end",
+        y="problem_type",
+        color="problem_type",
+        hover_data=["sentence", "timestamp"],
+        title=f"Event Log Timeline"
+    )
+
+    # Improve layout
+    fig.update_yaxes(categoryorder='total ascending')
+    fig.update_layout(
+        title_font_size=22,
+        font_size=14,
+        xaxis_title="Timeline",
+        yaxis_title="Problem Type",
+        legend_title="Problem Types"
+    )
+
+    # 3. Save to HTML
+    output_path = os.path.join(output_dir, f"chart_timeline.html")
+    fig.write_html(output_path)
+    print(f"Saved timeline chart to {output_path}")
+
+
+def create_message_timeline(evidence_df: pd.DataFrame, output_dir: str):
+    """
+    Generates an HTML timeline of reconstructed messages with color-coded sentences based on problem type.
+
+    Args:
+        evidence_df: A Pandas DataFrame with 'message_id', 'timestamp', 'sentence', and 'problem_type'.
+        output_dir: The directory where the output HTML file will be saved.
+    """
+    # Ensure the output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+
+    # 1. Define color mapping for problem types
+    color_map = {
+        'Normal': '#333333',  # Dark gray for normal text
+        'SurroundingEnvironment': '#FF6347',  # Tomato
+        'HardwareFault': '#DC143C',  # Crimson
+        'ParamViolation': '#FF8C00',  # DarkOrange
+        'RegulationViolation': '#9400D3',  # DarkViolet
+        'CommunicationIssue': '#4169E1',  # RoyalBlue
+        'SoftwareFault': '#228B22',  # ForestGreen
+        'default': '#000000'
+    }
+
+    # 2. Prepare the data
+    # Ensure sentences end with a period.
+    evidence_df['sentence_punc'] = evidence_df['sentence'].apply(lambda s: s + '.' if not s.endswith('.') else s)
+    
+    # Ensure timestamp is present and sorted
+    if 'timestamp' not in evidence_df.columns:
+         time_str = evidence_df['date'].astype(str) + ' ' + evidence_df['time'].astype(str)
+         evidence_df['timestamp'] = pd.to_datetime(time_str, format='%m/%d/%Y %I:%M:%S.%f %p')
+
+    df = evidence_df.sort_values(['message_id', 'timestamp']).copy()
+
+    # 3. Group by message_id and reconstruct messages with HTML styling
+    timeline_entries = []
+    for message_id, group in df.groupby('message_id'):
+        # Get the timestamp from the first sentence of the message
+        timestamp = group['timestamp'].iloc[0].strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        
+        # Reconstruct the message with colored sentences
+        colored_message = ' '.join([
+            f'<span style="color: {color_map.get(row["problem_type"], color_map["default"])}">{row["sentence_punc"]}</span>'
+            for _, row in group.iterrows()
+        ])
+        
+        timeline_entries.append(f'<p><strong>{timestamp}</strong>: {colored_message}</p>')
+
+    # 4. Generate the final HTML content
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Event Log Timeline</title>
+        <style>
+            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; line-height: 1.6; }}
+            h1 {{ color: #333; }}
+            p {{ border-bottom: 1px solid #eee; padding-bottom: 10px; }}
+            strong {{ color: #555; }}
+        </style>
+    </head>
+    <body>
+        <h1>Event Log Timeline</h1>
+        {''.join(timeline_entries)}
+    </body>
+    </html>
+    """
+
+    # 5. Save to HTML file
+    output_path = os.path.join(output_dir, "message_timeline.html")
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    print(f"Saved message timeline to {output_path}")

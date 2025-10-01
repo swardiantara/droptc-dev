@@ -88,7 +88,7 @@ def interpretability_report(model, tokenizer, config: dict, device, workdir: str
     print("Test set loaded successfully...")
     try:
         embedding_layer = get_embedding_layer(model.embedding_model)
-        print(f"Identified embedding layer: {embedding_layer}")
+        # print(f"Identified embedding layer: {embedding_layer}")
         lig = LayerIntegratedGradients(model, embedding_layer)
         print("LayerIntegratedGradients instantiated successfully!")
     except AttributeError as e:
@@ -144,5 +144,5 @@ def interpretability_report(model, tokenizer, config: dict, device, workdir: str
     print("Finish interpreting...")
     test_set['problem_type'] = pred_label_list
     test_set['pred_prob'] = pred_prob_list
-    
+
     return test_set

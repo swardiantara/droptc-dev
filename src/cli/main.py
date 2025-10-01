@@ -3,7 +3,7 @@ import torch
 import pandas as pd
 
 from src.cli.preprocessing import segment_evidence
-from src.cli.postprocessing import cluster_sentences, summarize_evidence
+from src.cli.postprocessing import cluster_sentences, summarize_evidence, create_timeline_chart, create_message_timeline
 from src.cli.utils import load_config, create_workdir, interpretability_report
 from src.droptc.model import DroPTC
 
@@ -60,8 +60,14 @@ def main():
         # Perform clustering, add cluster_id column to the parsed dataframe.
         current_evidence = cluster_sentences(current_evidence)
         current_evidence.to_excel(os.path.join(current_dir, f'final.xlsx'), index=False)
+        key_events = current_evidence[current_evidence['problem_type'] != 'normal']
+        key_events.to_excel(os.path.join(current_dir, f'key_events.xlsx'), index=False)
+        print(f"Identified {len(key_events)} key events in {file}")
         # generate frequency report based on problem_type and cluster_id
         summarize_evidence(current_evidence, current_dir)
+        create_timeline_chart(current_evidence, current_dir)
+        create_message_timeline(current_evidence, current_dir)
+        print(f"Generated summary reports for {file}")
     # Read raw decrypted evidence file, extract message column, store in dataframe variable
     # Export the parsed log into an excel file, store it under the output folder -> parsed_XXXfilename
     # Perform log segmentation, add message_id and sentence columns to the parsed dataframe

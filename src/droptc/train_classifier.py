@@ -296,7 +296,7 @@ def interpretability_report(model, tokenizer, args, device, workdir):
     print("Test set loaded successfully...")
     try:
         embedding_layer = get_embedding_layer(model.embedding_model)
-        print(f"Identified embedding layer: {embedding_layer}")
+        # print(f"Identified embedding layer: {embedding_layer}")
         lig = LayerIntegratedGradients(model, embedding_layer)
         print("LayerIntegratedGradients instantiated successfully!")
     except AttributeError as e:
