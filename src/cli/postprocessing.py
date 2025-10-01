@@ -155,8 +155,18 @@ def create_message_timeline(evidence_df: pd.DataFrame, output_dir: str):
         'ParamViolation': '#FF8C00',  # DarkOrange
         'RegulationViolation': '#9400D3',  # DarkViolet
         'CommunicationIssue': '#4169E1',  # RoyalBlue
-        'SoftwareFault': '#228B22',  # ForestGreen
+        'SoftwareFault': "#F04351",  # ForestGreen
         'default': '#000000'
+    }
+
+    problem_map = {
+        'Normal': 'N',
+        'SurroundingEnvironment': 'SE',
+        'HardwareFault': 'HF',
+        'ParamViolation': 'PV',
+        'RegulationViolation': 'RV',
+        'CommunicationIssue': 'CI',
+        'SoftwareFault': 'SF'
     }
 
     # 2. Prepare the data
@@ -178,7 +188,7 @@ def create_message_timeline(evidence_df: pd.DataFrame, output_dir: str):
         
         # Reconstruct the message with colored sentences
         colored_message = ' '.join([
-            f'<span style="color: {color_map.get(row["problem_type"], color_map["default"])}">{row["sentence_punc"]}</span>'
+            f'<span style="color: {color_map.get(row["problem_type"], color_map["default"])}">[{problem_map.get(row['problem_type'])}] {row["sentence_punc"]}</span>'
             for _, row in group.iterrows()
         ])
         
