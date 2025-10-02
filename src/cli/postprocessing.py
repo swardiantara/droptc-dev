@@ -161,12 +161,12 @@ def create_message_timeline(evidence_df: pd.DataFrame, output_dir: str):
 
     problem_map = {
         'Normal': 'N',
-        'SurroundingEnvironment': 'SE',
-        'HardwareFault': 'HF',
-        'ParamViolation': 'PV',
-        'RegulationViolation': 'RV',
-        'CommunicationIssue': 'CI',
-        'SoftwareFault': 'SF'
+        'SurroundingEnvironment': 'Sr',
+        'HardwareFault': 'Hw',
+        'ParamViolation': 'Pv',
+        'RegulationViolation': 'Rv',
+        'CommunicationIssue': 'Cm',
+        'SoftwareFault': 'Sw'
     }
 
     # 2. Prepare the data
