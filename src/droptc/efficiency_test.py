@@ -198,19 +198,19 @@ def resample_dataframe(df, target_size, random_state=42):
         return pd.concat(dfs, ignore_index=True)
 
 
-def run_efficiency_test(size: int, output_path: str):
+def run_efficiency_test(args, workdir: str):
     """
     Main function to orchestrate the efficiency testing across different models,
     devices, and sample sizes.
     """
     # --- Configuration ---
-    MODELS_TO_TEST = [
-        'sentence-transformers/all-MiniLM-L6-v2', # Proposed model
-        'sentence-transformers/all-mpnet-base-v2'   # Baseline model
-    ]
-    DEVICES_TO_TEST = ['cpu']
-    if torch.cuda.is_available():
-        DEVICES_TO_TEST.append('cuda')
+    # MODELS_TO_TEST = [
+    #     'sentence-transformers/all-MiniLM-L6-v2', # Proposed model
+    #     'sentence-transformers/all-mpnet-base-v2'   # Baseline model
+    # ]
+    # DEVICES_TO_TEST = ['cpu']
+    # if torch.cuda.is_available():
+    #     DEVICES_TO_TEST.append('cuda')
     
     DATASET_PATH = 'dataset/test_sentence.xlsx'
     # SAMPLE_SIZES = [1000, 5000, 10000, 50000, 100000, 500000, 1000000] # Add more sizes if needed
@@ -232,35 +232,35 @@ def run_efficiency_test(size: int, output_path: str):
 
     all_results = []
 
-    for device in DEVICES_TO_TEST:
-        print(f"\n----- Testing on Device: {device.upper()} -----")
-        for model_name in MODELS_TO_TEST:
-            workdir = os.path.join(output_path, model_name.split('/')[-1], device)
-            os.makedirs(workdir, exist_ok=True) 
-            print(f"\n  Preparing sample size: {size}")
-            # Resample the dataframe to the target size
-            resampled_df = resample_dataframe(full_df, size)
-            sample_data = resampled_df['sentence'].tolist()
+    # for device in DEVICES_TO_TEST:
+    #     print(f"\n----- Testing on Device: {device.upper()} -----")
+    #     for model_name in MODELS_TO_TEST:
+    #         workdir = os.path.join(output_path, model_name.split('/')[-1], device)
             
-            result = run_single_test(model_name, device, sample_data)
+    print(f"\n  Preparing sample size: {args.sample_size}")
+    # Resample the dataframe to the target args.sample_size
+    resampled_df = resample_dataframe(full_df, args.sample_size)
+    sample_data = resampled_df['sentence'].tolist()
+    
+    result = run_single_test(args.model_name, args.device, sample_data)
 
-            if result:
-                all_results.append(result)
-                with open(os.path.join(workdir, 'result.json'), 'w') as f:
-                    json.dump(result, f, indent=4) # Indents with 4 spaces
+    if result:
+        all_results.append(result)
+        with open(os.path.join(workdir, 'result.json'), 'w') as f:
+            json.dump(result, f, indent=4) # Indents with 4 spaces
 
     # --- Reporting ---
-    if not all_results:
-        print("\nNo results were generated. Test finished.")
-        return
+    # if not all_results:
+    #     print("\nNo results were generated. Test finished.")
+    #     return
         
-    results_df = pd.DataFrame(all_results)
+    # results_df = pd.DataFrame(all_results)
     
     
-    results_df.to_csv(os.path.join(output_path, 'efficiency_test_results.csv'), index=False)
+    # results_df.to_csv(os.path.join(workdir, 'efficiency_test_results.csv'), index=False)
 
-    print(f"\nEfficiency test complete. Results saved to '{output_path}'")
-    print(results_df.round(4))
+    print(f"\nEfficiency test complete. Results saved to '{workdir}'")
+    # print(results_df.round(4))
 
 
 
@@ -268,11 +268,17 @@ def main():
     parser = argparse.ArgumentParser()
     # Required arguments
     parser.add_argument('--sample_size', type=int, default=1000, help='Number of samples')
+    parser.add_argument('--model_name', type=str, choices=['all-MiniLM-L6-v2', 'all-mpnet-base-v2'], default='all-MiniLM-L6-v2', help='Type of Word Embdding used. Default: `all-MiniLM-L6-v2`')
+    parser.add_argument('--device', type=str, choices=['cpu', 'cuda'], default='cpu',
+                    help="Device to perform the computation. Default: `cpu`.")
 
     args = parser.parse_args()
-    output_path = os.path.join('experiments', 'efficiency_test', str(args.sample_size))
+    output_path = os.path.join('experiments', 'efficiency_test', args.model_name, args.device, str(args.sample_size))
     os.makedirs(output_path, exist_ok=True)
-    run_efficiency_test(args.sample_size, output_path)
+    if os.path.exists(os.path.join(output_path, 'result.json')):
+        print('Scenario has been executed. Skipped!')
+        return exit(0)
+    run_efficiency_test(args, output_path)
 
 if __name__ == '__main__':
     main()
