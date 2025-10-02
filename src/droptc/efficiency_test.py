@@ -221,9 +221,9 @@ def run_efficiency_test(args, workdir: str):
     print(f"\n  Preparing sample size: {args.sample_size}")
     # Resample the dataframe to the target size
     resampled_df = resample_dataframe(full_df, args.sample_size)
-    sample_data = resampled_df['sentence'].tolist()
+    # sample_data = resampled_df['sentence'].tolist()
     
-    result = run_single_test(args.model_name, args.device, sample_data, args.batch_size)
+    result = run_single_test(args.model_name, args.device, resampled_df, args.batch_size)
 
     if result:
         # Ensure the output directory exists
