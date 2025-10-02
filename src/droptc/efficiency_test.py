@@ -106,23 +106,15 @@ def run_single_test(model_name, device, data_sample):
     print(f"  Testing model: {model_name} on {device.upper()} with {len(data_sample)} samples...")
 
     # 1. Load model and create prediction pipeline
-    try:
-        predict_pipeline = get_prediction_pipeline(model_name, device)
-    except Exception as e:
-        print(f"    ERROR: Failed to load model. {e}")
-        return None
+    predict_pipeline = get_prediction_pipeline(model_name, device)
 
     # 2. Warm-up run (not measured)
     # This helps to cache models and initialize CUDA contexts to avoid one-off startup costs
-    try:
-        print("    Performing warm-up run...")
-        warmup_sample = iter(data_sample)
-        if warmup_sample:
-            predict_pipeline(next(warmup_sample))
-        print("    Warm-up complete.")
-    except Exception as e:
-        print(f"    ERROR during warm-up: {e}")
-        return None
+    print("    Performing warm-up run...")
+    warmup_sample = iter(data_sample)
+    if warmup_sample:
+        predict_pipeline(next(warmup_sample))
+    print("    Warm-up complete.")
 
     # 3. Measured run
     monitor = SystemMonitor(device=device)
