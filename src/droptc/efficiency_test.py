@@ -12,7 +12,6 @@ except ImportError:
 
 from transformers import AutoTokenizer, AutoModel
 from src.droptc.model import DroPTC
-from src.cli.preprocessing import extract_sentences_from_log
 
 # Helper class to monitor system resources in a separate thread
 class SystemMonitor(threading.Thread):
