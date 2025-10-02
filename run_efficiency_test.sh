@@ -12,7 +12,7 @@ for model in "${models[@]}"; do
         fi
         for size in "${sizes[@]}"; do
             echo "Running efficiency test with model: $model, device: $device, sample size: $size"
-            python -m src.droptc.efficiency_test --model_name "sentence-transformers/$model" --device "$device" --sample_size $size
+            python -m src.droptc.efficiency_test --model_name "$model" --device "$device" --sample_size $size
         done
     done
 done

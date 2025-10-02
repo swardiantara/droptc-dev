@@ -60,8 +60,8 @@ class SystemMonitor(threading.Thread):
 def get_prediction_pipeline(model_name, device):
     """Loads the model and tokenizer and returns a prediction function."""
     # Load embedding model
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    embedding_model = AutoModel.from_pretrained(model_name).to(device)
+    tokenizer = AutoTokenizer.from_pretrained(f"sentence-transformers/{model_name}")
+    embedding_model = AutoModel.from_pretrained(f"sentence-transformers/{model_name}").to(device)
     embedding_model.eval()
 
     # Load classifier
@@ -70,7 +70,7 @@ def get_prediction_pipeline(model_name, device):
     
     # Path to the trained classifier model
     # IMPORTANT: This path might need to be adjusted based on your project structure
-    if model_name == 'sentence-transformers/all-MiniLM-L6-v2':
+    if model_name == 'all-MiniLM-L6-v2':
         classifier_path = 'src/cli/model/pytorch_model.pt'
     else:
         classifier_path = 'src/cli/model/pytorch_model_mpnet.pt'
