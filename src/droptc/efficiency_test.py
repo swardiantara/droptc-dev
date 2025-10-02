@@ -124,7 +124,7 @@ def run_single_test(model_name, device, data_sample: pd.DataFrame, batch_size):
     # 3. Measured run
     monitor = SystemMonitor(device=device)
     
-    if not data_sample:
+    if (data_sample is None) or (len(data_sample) == 0):
         print("    No sentences provided. Skipping test.")
         return None
 
