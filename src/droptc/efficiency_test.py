@@ -80,7 +80,7 @@ def get_prediction_pipeline(model_name, device, batch_size=32):
     classifier.load_state_dict(torch.load(classifier_path, map_location=device))
     classifier.eval()
 
-    def predict(sentences):
+    def predict(sentences: pd.DataFrame):
         """Function to run the full prediction pipeline in batches."""
         all_preds = []
         dataset = SentenceDataset(sentences, tokenizer, max_length=64)
@@ -110,15 +110,15 @@ def run_single_test(model_name, device, data_sample: pd.DataFrame, batch_size):
 
     # 2. Warm-up run (not measured)
     print("    Performing warm-up run...")
-    try:
-        warmup_data = data_sample[:batch_size * 2] # Use a small subset for warm-up
-        if warmup_data:
-            predict_pipeline(warmup_data)
-        print("    Warm-up complete.")
-    except Exception as e:
-        print(f"    ERROR during warm-up: {e}")
-        # Optionally, you might want to return or raise here depending on desired strictness
-        return None
+    # try:
+    warmup_data = data_sample[:batch_size * 2] # Use a small subset for warm-up
+    if warmup_data:
+        predict_pipeline(warmup_data)
+    print("    Warm-up complete.")
+    # except Exception as e:
+    #     print(f"    ERROR during warm-up: {e}")
+    #     # Optionally, you might want to return or raise here depending on desired strictness
+    #     return None
 
 
     # 3. Measured run
