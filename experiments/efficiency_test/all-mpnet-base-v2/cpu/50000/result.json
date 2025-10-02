@@ -1,0 +1,11 @@
+{
+    "model": "all-mpnet-base-v2",
+    "device": "cpu",
+    "sample_size": 50000,
+    "batch_size": 32,
+    "inference_time_s": 1013.1240739409695,
+    "avg_cpu_percent": 66.72365399841647,
+    "peak_cpu_percent": 70.1,
+    "avg_gpu_percent": 0,
+    "peak_gpu_percent": 0
+}

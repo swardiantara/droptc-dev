@@ -1,0 +1,11 @@
+{
+    "model": "all-MiniLM-L6-v2",
+    "device": "cpu",
+    "sample_size": 10000,
+    "batch_size": 32,
+    "inference_time_s": 27.38054842094425,
+    "avg_cpu_percent": 66.7824175824176,
+    "peak_cpu_percent": 87.5,
+    "avg_gpu_percent": 0,
+    "peak_gpu_percent": 0
+}

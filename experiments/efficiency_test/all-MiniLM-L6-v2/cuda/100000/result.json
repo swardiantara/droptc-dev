@@ -1,0 +1,11 @@
+{
+    "model": "all-MiniLM-L6-v2",
+    "device": "cuda",
+    "sample_size": 100000,
+    "batch_size": 32,
+    "inference_time_s": 24.724353198020253,
+    "avg_cpu_percent": 4.161133603238866,
+    "peak_cpu_percent": 5.0,
+    "avg_gpu_percent": 49.88259109311741,
+    "peak_gpu_percent": 52
+}
