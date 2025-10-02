@@ -112,7 +112,7 @@ def run_single_test(model_name, device, data_sample: pd.DataFrame, batch_size):
     print("    Performing warm-up run...")
     # try:
     warmup_data = data_sample[:batch_size * 2] # Use a small subset for warm-up
-    if warmup_data:
+    if len(warmup_data) > 0:
         predict_pipeline(warmup_data)
     print("    Warm-up complete.")
     # except Exception as e:
