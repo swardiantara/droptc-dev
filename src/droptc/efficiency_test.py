@@ -161,7 +161,7 @@ def run_single_test(model_name, device, data_sample: pd.DataFrame, batch_size):
     }
 
 
-def resample_dataframe(df, target_size, random_state=42):
+def resample_dataframe(df, target_size, random_state=42) -> pd.DataFrame:
     """
     Resample a dataframe to a target size by duplicating or selecting rows.
     
