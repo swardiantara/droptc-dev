@@ -16,6 +16,7 @@ from torch.utils.data import DataLoader
 from transformers import AutoTokenizer, AutoModel
 from src.droptc.model import DroPTC
 from src.droptc.utils import SentenceDataset
+from src.droptc.train_classifier import slabel2idx
 
 # Helper class to monitor system resources in a separate thread
 class SystemMonitor(threading.Thread):
@@ -228,6 +229,7 @@ def run_efficiency_test(args, workdir: str):
     # Load data
     try:
         full_df = pd.read_excel(DATASET_PATH)
+        full_df['label'] = full_df['problem_type'].map(slabel2idx)
         # The pipeline expects a 'sentence' column.
         if 'sentence' not in full_df.columns:
             raise ValueError("Dataset must contain a 'sentence' column.")
@@ -247,7 +249,6 @@ def run_efficiency_test(args, workdir: str):
     print(f"\n  Preparing sample size: {args.sample_size}")
     # Resample the dataframe to the target args.sample_size
     resampled_df = resample_dataframe(full_df, args.sample_size)
-    sample_data = resampled_df['sentence'].tolist()
     # data loader sini. ganti sample_data jadi data loader
     tokenizer = AutoTokenizer.from_pretrained(f"sentence-transformers/{args.model_name}")
     dataset = SentenceDataset(resampled_df, tokenizer, max_length=64)
