@@ -257,7 +257,7 @@ def run_efficiency_test(size: int, output_path: str):
     results_df = pd.DataFrame(all_results)
     
     
-    results_df.to_csv(os.path.join(output_path, size, 'efficiency_test_results.csv'), index=False)
+    results_df.to_csv(os.path.join(output_path, 'efficiency_test_results.csv'), index=False)
 
     print(f"\nEfficiency test complete. Results saved to '{output_path}'")
     print(results_df.round(4))
