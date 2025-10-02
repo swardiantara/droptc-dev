@@ -1,0 +1,260 @@
+import os
+import time
+import threading
+import pandas as pd
+import torch
+import psutil
+try:
+    import pynvml
+    NVML_AVAILABLE = True
+except ImportError:
+    NVML_AVAILABLE = False
+
+from transformers import AutoTokenizer, AutoModel
+from src.droptc.model import DroPTC
+from src.cli.preprocessing import extract_sentences_from_log
+
+# Helper class to monitor system resources in a separate thread
+class SystemMonitor(threading.Thread):
+    def __init__(self, device='cpu', gpu_index=0):
+        super().__init__()
+        self.device = device
+        self.gpu_index = gpu_index
+        self.stopped = threading.Event()
+        self.cpu_usage = []
+        self.gpu_usage = []
+        self.daemon = True
+        if self.device == 'cuda' and NVML_AVAILABLE:
+            pynvml.nvmlInit()
+            self.handle = pynvml.nvmlDeviceGetHandleByIndex(self.gpu_index)
+
+    def run(self):
+        while not self.stopped.is_set():
+            # Record CPU usage
+            self.cpu_usage.append(psutil.cpu_percent())
+            
+            # Record GPU usage if applicable
+            if self.device == 'cuda' and NVML_AVAILABLE:
+                try:
+                    util = pynvml.nvmlDeviceGetUtilizationRates(self.handle)
+                    self.gpu_usage.append(util.gpu)
+                except pynvml.NVMLError:
+                    # Handle cases where the GPU might not be available or query fails
+                    self.gpu_usage.append(0)
+            
+            time.sleep(0.1) # Poll every 100ms
+
+    def stop(self):
+        self.stopped.set()
+        if self.device == 'cuda' and NVML_AVAILABLE:
+            pynvml.nvmlShutdown()
+
+    def get_results(self):
+        avg_cpu = sum(self.cpu_usage) / len(self.cpu_usage) if self.cpu_usage else 0
+        peak_cpu = max(self.cpu_usage) if self.cpu_usage else 0
+        avg_gpu = sum(self.gpu_usage) / len(self.gpu_usage) if self.gpu_usage else 0
+        peak_gpu = max(self.gpu_usage) if self.gpu_usage else 0
+        return avg_cpu, peak_cpu, avg_gpu, peak_gpu
+
+def get_prediction_pipeline(model_name, device):
+    """Loads the model and tokenizer and returns a prediction function."""
+    # Load embedding model
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    embedding_model = AutoModel.from_pretrained(model_name).to(device)
+    embedding_model.eval()
+
+    # Load classifier
+    # Assuming the classifier is compatible with both embedding models
+    classifier = DroPTC(embedding_model, tokenizer, freeze_embedding=True).to(device)
+    
+    # Path to the trained classifier model
+    # IMPORTANT: This path might need to be adjusted based on your project structure
+    if model_name == 'sentence-transformers/all-MiniLM-L6-v2':
+        classifier_path = 'src/cli/model/pytorch_model.pt'
+    else:
+        classifier_path = 'src/cli/model/pytorch_model_mpnet.pt'
+    if not os.path.exists(classifier_path):
+        raise FileNotFoundError(f"Classifier model not found at {classifier_path}. Please ensure the path is correct.")
+        
+    classifier.load_state_dict(torch.load(classifier_path, map_location=device))
+    classifier.eval()
+
+    def predict(sentences):
+        """Function to run the full prediction pipeline."""
+        inputs = tokenizer(sentences, padding=True, truncation=True, return_tensors="pt").to(device)
+        with torch.no_grad():
+            outputs = classifier(**inputs)
+            _, preds = torch.max(outputs, dim=1)
+        return preds.cpu().numpy()
+
+    return predict
+
+def run_single_test(model_name, device, data_sample):
+    """
+    Runs a single efficiency test for a given configuration.
+    Includes a warm-up run to ensure fair measurement.
+    """
+    print(f"  Testing model: {model_name} on {device.upper()} with {len(data_sample)} samples...")
+
+    # 1. Load model and create prediction pipeline
+    try:
+        predict_pipeline = get_prediction_pipeline(model_name, device)
+    except Exception as e:
+        print(f"    ERROR: Failed to load model. {e}")
+        return None
+
+    # 2. Warm-up run (not measured)
+    # This helps to cache models and initialize CUDA contexts to avoid one-off startup costs
+    try:
+        print("    Performing warm-up run...")
+        warmup_sample = data_sample[:10] if len(data_sample) > 10 else data_sample
+        if warmup_sample:
+            predict_pipeline(warmup_sample)
+        print("    Warm-up complete.")
+    except Exception as e:
+        print(f"    ERROR during warm-up: {e}")
+        return None
+
+    # 3. Measured run
+    monitor = SystemMonitor(device=device)
+    
+    # The data_sample is already a list of sentences
+    sentences_to_predict = data_sample
+
+    if not sentences_to_predict:
+        print("    No sentences provided. Skipping test.")
+        return None
+
+    torch.cuda.synchronize() if device == 'cuda' else None
+    
+    monitor.start()
+    start_time = time.perf_counter()
+
+    # Execute the pipeline
+    predict_pipeline(sentences_to_predict)
+
+    torch.cuda.synchronize() if device == 'cuda' else None
+    end_time = time.perf_counter()
+    monitor.stop()
+    
+    inference_time = end_time - start_time
+    avg_cpu, peak_cpu, avg_gpu, peak_gpu = monitor.get_results()
+
+    print(f"    Inference Time: {inference_time:.4f}s")
+    print(f"    Avg/Peak CPU: {avg_cpu:.2f}% / {peak_cpu:.2f}%")
+    if device == 'cuda':
+        print(f"    Avg/Peak GPU: {avg_gpu:.2f}% / {peak_gpu:.2f}%")
+
+    return {
+        "model": model_name.split('/')[-1],
+        "device": device,
+        "sample_size": len(data_sample),
+        "inference_time_s": inference_time,
+        "avg_cpu_percent": avg_cpu,
+        "peak_cpu_percent": peak_cpu,
+        "avg_gpu_percent": avg_gpu,
+        "peak_gpu_percent": peak_gpu,
+    }
+
+
+def resample_dataframe(df, target_size, random_state=42):
+    """
+    Resample a dataframe to a target size by duplicating or selecting rows.
+    
+    Parameters:
+    -----------
+    df : pd.DataFrame
+        Original dataframe to resample
+    target_size : int
+        Desired number of samples in the output dataframe
+    random_state : int, optional
+        Random seed for reproducibility (default: 42)
+    
+    Returns:
+    --------
+    pd.DataFrame
+        Resampled dataframe with target_size rows
+    """
+    current_size = len(df)
+    
+    if target_size <= current_size:
+        # Downsample: randomly select rows
+        return df.sample(n=target_size, random_state=random_state).reset_index(drop=True)
+    else:
+        # Upsample: duplicate rows
+        # Calculate how many full copies and remaining samples needed
+        n_full_copies = target_size // current_size
+        n_remaining = target_size % current_size
+        
+        # Create list of dataframes to concatenate
+        dfs = [df] * n_full_copies
+        
+        # Add remaining samples if needed
+        if n_remaining > 0:
+            dfs.append(df.sample(n=n_remaining, random_state=random_state))
+        
+        # Concatenate and reset index
+        return pd.concat(dfs, ignore_index=True)
+
+
+def run_efficiency_test():
+    """
+    Main function to orchestrate the efficiency testing across different models,
+    devices, and sample sizes.
+    """
+    # --- Configuration ---
+    MODELS_TO_TEST = [
+        'sentence-transformers/all-MiniLM-L6-v2', # Proposed model
+        'sentence-transformers/all-mpnet-base-v2'   # Baseline model
+    ]
+    DEVICES_TO_TEST = ['cpu']
+    if torch.cuda.is_available():
+        DEVICES_TO_TEST.append('cuda')
+    
+    DATASET_PATH = 'dataset/test_sentence.xlsx'
+    SAMPLE_SIZES = [1000, 5000, 10000, 50000, 100000, 500000, 1000000] # Add more sizes if needed
+
+    # --- Test Execution ---
+    print("Starting Efficiency Test...")
+    
+    # Load data
+    try:
+        full_df = pd.read_excel(DATASET_PATH)
+        # The pipeline expects a 'sentence' column.
+        if 'sentence' not in full_df.columns:
+            raise ValueError("Dataset must contain a 'sentence' column.")
+        
+        print(f"Loaded dataset with {len(full_df)} records.")
+    except FileNotFoundError:
+        print(f"ERROR: Dataset not found at {DATASET_PATH}. Aborting.")
+        return
+
+    all_results = []
+
+    for device in DEVICES_TO_TEST:
+        print(f"\n----- Testing on Device: {device.upper()} -----")
+        for model_name in MODELS_TO_TEST:
+            for size in sorted(SAMPLE_SIZES):
+                print(f"\n  Preparing sample size: {size}")
+                # Resample the dataframe to the target size
+                resampled_df = resample_dataframe(full_df, size)
+                sample_data = resampled_df['sentence'].tolist()
+                
+                result = run_single_test(model_name, device, sample_data)
+                if result:
+                    all_results.append(result)
+
+    # --- Reporting ---
+    if not all_results:
+        print("\nNo results were generated. Test finished.")
+        return
+        
+    results_df = pd.DataFrame(all_results)
+    output_path = 'efficiency_test_results.csv'
+    results_df.to_csv(output_path, index=False)
+
+    print(f"\nEfficiency test complete. Results saved to '{output_path}'")
+    print(results_df.round(4))
+
+if __name__ == '__main__':
+    run_efficiency_test()
