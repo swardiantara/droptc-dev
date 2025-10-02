@@ -60,7 +60,7 @@ class SystemMonitor(threading.Thread):
         peak_gpu = max(self.gpu_usage) if self.gpu_usage else 0
         return avg_cpu, peak_cpu, avg_gpu, peak_gpu
 
-def get_prediction_pipeline(model_name, device):
+def get_prediction_pipeline(model_name, device, batch_size=32):
     """Loads the model and tokenizer and returns a prediction function."""
     # Load embedding model
     tokenizer = AutoTokenizer.from_pretrained(f"sentence-transformers/{model_name}")
@@ -68,11 +68,8 @@ def get_prediction_pipeline(model_name, device):
     embedding_model.eval()
 
     # Load classifier
-    # Assuming the classifier is compatible with both embedding models
     classifier = DroPTC(embedding_model, tokenizer, freeze_embedding=True).to(device)
     
-    # Path to the trained classifier model
-    # IMPORTANT: This path might need to be adjusted based on your project structure
     if model_name == 'all-MiniLM-L6-v2':
         classifier_path = 'src/cli/model/pytorch_model.pt'
     else:
@@ -83,11 +80,14 @@ def get_prediction_pipeline(model_name, device):
     classifier.load_state_dict(torch.load(classifier_path, map_location=device))
     classifier.eval()
 
-    def predict(test_loader):
-        """Function to run the full prediction pipeline."""
+    def predict(sentences):
+        """Function to run the full prediction pipeline in batches."""
         all_preds = []
+        dataset = SentenceDataset(sentences, tokenizer, max_length=64)
+        data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+
         with torch.no_grad():
-            for batch in test_loader:
+            for batch in data_loader:
                 input_ids = batch["input_ids"].to(device)
                 attention_mask = batch["attention_mask"].to(device)
                 outputs = classifier(input_ids, attention_mask)
@@ -98,7 +98,7 @@ def get_prediction_pipeline(model_name, device):
 
     return predict
 
-def run_single_test(model_name, device, data_sample):
+def run_single_test(model_name, device, data_sample: pd.DataFrame, batch_size):
     """
     Runs a single efficiency test for a given configuration.
     Includes a warm-up run to ensure fair measurement.
@@ -106,22 +106,24 @@ def run_single_test(model_name, device, data_sample):
     print(f"  Testing model: {model_name} on {device.upper()} with {len(data_sample)} samples...")
 
     # 1. Load model and create prediction pipeline
-    predict_pipeline = get_prediction_pipeline(model_name, device)
+    predict_pipeline = get_prediction_pipeline(model_name, device, batch_size)
 
     # 2. Warm-up run (not measured)
-    # This helps to cache models and initialize CUDA contexts to avoid one-off startup costs
     print("    Performing warm-up run...")
-    warmup_sample = iter(data_sample)
-    if warmup_sample:
-        predict_pipeline(next(warmup_sample))
-    print("    Warm-up complete.")
+    try:
+        warmup_data = data_sample[:batch_size * 2] # Use a small subset for warm-up
+        if warmup_data:
+            predict_pipeline(warmup_data)
+        print("    Warm-up complete.")
+    except Exception as e:
+        print(f"    ERROR during warm-up: {e}")
+        # Optionally, you might want to return or raise here depending on desired strictness
+        return None
+
 
     # 3. Measured run
     monitor = SystemMonitor(device=device)
     
-    # The data_sample is already a list of sentences
-    # sentences_to_predict = data_sample
-
     if not data_sample:
         print("    No sentences provided. Skipping test.")
         return None
@@ -147,9 +149,10 @@ def run_single_test(model_name, device, data_sample):
         print(f"    Avg/Peak GPU: {avg_gpu:.2f}% / {peak_gpu:.2f}%")
 
     return {
-        "model": model_name.split('/')[-1],
+        "model": model_name,
         "device": device,
         "sample_size": len(data_sample),
+        "batch_size": batch_size,
         "inference_time_s": inference_time,
         "avg_cpu_percent": avg_cpu,
         "peak_cpu_percent": peak_cpu,
@@ -203,64 +206,32 @@ def run_efficiency_test(args, workdir: str):
     Main function to orchestrate the efficiency testing across different models,
     devices, and sample sizes.
     """
-    # --- Configuration ---
-    # MODELS_TO_TEST = [
-    #     'sentence-transformers/all-MiniLM-L6-v2', # Proposed model
-    #     'sentence-transformers/all-mpnet-base-v2'   # Baseline model
-    # ]
-    # DEVICES_TO_TEST = ['cpu']
-    # if torch.cuda.is_available():
-    #     DEVICES_TO_TEST.append('cuda')
-    
-    DATASET_PATH = 'dataset/test_sentence.xlsx'
-    # SAMPLE_SIZES = [1000, 5000, 10000, 50000, 100000, 500000, 1000000] # Add more sizes if needed
-
     # --- Test Execution ---
     print("Starting Efficiency Test...")
     
     # Load data
+    DATASET_PATH = 'dataset/test_sentence.xlsx'
     full_df = pd.read_excel(DATASET_PATH)
     full_df['label'] = full_df['problem_type'].map(slabel2idx)
-    # The pipeline expects a 'sentence' column.
     if 'sentence' not in full_df.columns:
         raise ValueError("Dataset must contain a 'sentence' column.")
     
     print(f"Loaded dataset with {len(full_df)} records.")
 
-
-    all_results = []
-
-    # for device in DEVICES_TO_TEST:
-    #     print(f"\n----- Testing on Device: {device.upper()} -----")
-    #     for model_name in MODELS_TO_TEST:
-    #         workdir = os.path.join(output_path, model_name.split('/')[-1], device)
-            
     print(f"\n  Preparing sample size: {args.sample_size}")
-    # Resample the dataframe to the target args.sample_size
+    # Resample the dataframe to the target size
     resampled_df = resample_dataframe(full_df, args.sample_size)
-    # data loader sini. ganti sample_data jadi data loader
-    tokenizer = AutoTokenizer.from_pretrained(f"sentence-transformers/{args.model_name}")
-    dataset = SentenceDataset(resampled_df, tokenizer, max_length=64)
-    data_loader = DataLoader(dataset, batch_size=32, shuffle=False)
-    result = run_single_test(args.model_name, args.device, data_loader)
+    sample_data = resampled_df['sentence'].tolist()
+    
+    result = run_single_test(args.model_name, args.device, sample_data, args.batch_size)
 
     if result:
-        all_results.append(result)
+        # Ensure the output directory exists
+        os.makedirs(workdir, exist_ok=True)
         with open(os.path.join(workdir, 'result.json'), 'w') as f:
-            json.dump(result, f, indent=4) # Indents with 4 spaces
-
-    # --- Reporting ---
-    # if not all_results:
-    #     print("\nNo results were generated. Test finished.")
-    #     return
-        
-    # results_df = pd.DataFrame(all_results)
-    
-    
-    # results_df.to_csv(os.path.join(workdir, 'efficiency_test_results.csv'), index=False)
+            json.dump(result, f, indent=4)
 
     print(f"\nEfficiency test complete. Results saved to '{workdir}'")
-    # print(results_df.round(4))
 
 
 
@@ -271,13 +242,14 @@ def main():
     parser.add_argument('--model_name', type=str, choices=['all-MiniLM-L6-v2', 'all-mpnet-base-v2'], default='all-MiniLM-L6-v2', help='Type of Word Embdding used. Default: `all-MiniLM-L6-v2`')
     parser.add_argument('--device', type=str, choices=['cpu', 'cuda'], default='cpu',
                     help="Device to perform the computation. Default: `cpu`.")
+    parser.add_argument('--batch_size', type=int, default=32, help='Batch size for inference.')
 
     args = parser.parse_args()
     output_path = os.path.join('experiments', 'efficiency_test', args.model_name, args.device, str(args.sample_size))
     os.makedirs(output_path, exist_ok=True)
     if os.path.exists(os.path.join(output_path, 'result.json')):
         print('Scenario has been executed. Skipped!')
-        return exit(0)
+        return
     run_efficiency_test(args, output_path)
 
 if __name__ == '__main__':
