@@ -4,6 +4,8 @@ import threading
 import pandas as pd
 import torch
 import psutil
+import argparse
+import json
 try:
     import pynvml
     NVML_AVAILABLE = True
@@ -196,7 +198,7 @@ def resample_dataframe(df, target_size, random_state=42):
         return pd.concat(dfs, ignore_index=True)
 
 
-def run_efficiency_test():
+def run_efficiency_test(size: int, output_path: str):
     """
     Main function to orchestrate the efficiency testing across different models,
     devices, and sample sizes.
@@ -211,7 +213,7 @@ def run_efficiency_test():
         DEVICES_TO_TEST.append('cuda')
     
     DATASET_PATH = 'dataset/test_sentence.xlsx'
-    SAMPLE_SIZES = [1000, 5000, 10000, 50000, 100000, 500000, 1000000] # Add more sizes if needed
+    # SAMPLE_SIZES = [1000, 5000, 10000, 50000, 100000, 500000, 1000000] # Add more sizes if needed
 
     # --- Test Execution ---
     print("Starting Efficiency Test...")
@@ -233,15 +235,19 @@ def run_efficiency_test():
     for device in DEVICES_TO_TEST:
         print(f"\n----- Testing on Device: {device.upper()} -----")
         for model_name in MODELS_TO_TEST:
-            for size in sorted(SAMPLE_SIZES):
-                print(f"\n  Preparing sample size: {size}")
-                # Resample the dataframe to the target size
-                resampled_df = resample_dataframe(full_df, size)
-                sample_data = resampled_df['sentence'].tolist()
-                
-                result = run_single_test(model_name, device, sample_data)
-                if result:
-                    all_results.append(result)
+            workdir = os.path.join(output_path, model_name.split('/')[-1], device)
+            os.makedirs(workdir, exist_ok=True) 
+            print(f"\n  Preparing sample size: {size}")
+            # Resample the dataframe to the target size
+            resampled_df = resample_dataframe(full_df, size)
+            sample_data = resampled_df['sentence'].tolist()
+            
+            result = run_single_test(model_name, device, sample_data)
+
+            if result:
+                all_results.append(result)
+                with open(os.path.join(workdir, 'result.json'), 'w') as f:
+                    json.dump(result, f, indent=4) # Indents with 4 spaces
 
     # --- Reporting ---
     if not all_results:
@@ -249,11 +255,24 @@ def run_efficiency_test():
         return
         
     results_df = pd.DataFrame(all_results)
-    output_path = 'efficiency_test_results.csv'
-    results_df.to_csv(output_path, index=False)
+    
+    
+    results_df.to_csv(os.path.join(output_path, 'efficiency_test_results.csv'), index=False)
 
     print(f"\nEfficiency test complete. Results saved to '{output_path}'")
     print(results_df.round(4))
 
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    # Required arguments
+    parser.add_argument('--sample_size', type=int, default=1000, help='Number of samples')
+
+    args = parser.parse_args()
+    output_path = os.path.join('experiments', 'efficiency_test')
+    os.makedirs(output_path, exist_ok=True)
+    run_efficiency_test(args.sample_size, output_path)
+
 if __name__ == '__main__':
-    run_efficiency_test()
+    main()
