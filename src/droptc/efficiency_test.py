@@ -227,17 +227,14 @@ def run_efficiency_test(args, workdir: str):
     print("Starting Efficiency Test...")
     
     # Load data
-    try:
-        full_df = pd.read_excel(DATASET_PATH)
-        full_df['label'] = full_df['problem_type'].map(slabel2idx)
-        # The pipeline expects a 'sentence' column.
-        if 'sentence' not in full_df.columns:
-            raise ValueError("Dataset must contain a 'sentence' column.")
-        
-        print(f"Loaded dataset with {len(full_df)} records.")
-    except FileNotFoundError:
-        print(f"ERROR: Dataset not found at {DATASET_PATH}. Aborting.")
-        return
+    full_df = pd.read_excel(DATASET_PATH)
+    full_df['label'] = full_df['problem_type'].map(slabel2idx)
+    # The pipeline expects a 'sentence' column.
+    if 'sentence' not in full_df.columns:
+        raise ValueError("Dataset must contain a 'sentence' column.")
+    
+    print(f"Loaded dataset with {len(full_df)} records.")
+
 
     all_results = []
 
