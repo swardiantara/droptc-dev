@@ -257,7 +257,7 @@ def run_efficiency_test(size: int, output_path: str):
     results_df = pd.DataFrame(all_results)
     
     
-    results_df.to_csv(os.path.join(output_path, 'efficiency_test_results.csv'), index=False)
+    results_df.to_csv(os.path.join(output_path, size, 'efficiency_test_results.csv'), index=False)
 
     print(f"\nEfficiency test complete. Results saved to '{output_path}'")
     print(results_df.round(4))
@@ -270,7 +270,7 @@ def main():
     parser.add_argument('--sample_size', type=int, default=1000, help='Number of samples')
 
     args = parser.parse_args()
-    output_path = os.path.join('experiments', 'efficiency_test')
+    output_path = os.path.join('experiments', 'efficiency_test', str(args.sample_size))
     os.makedirs(output_path, exist_ok=True)
     run_efficiency_test(args.sample_size, output_path)
 
