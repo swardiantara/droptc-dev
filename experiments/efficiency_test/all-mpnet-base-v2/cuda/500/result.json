@@ -1,0 +1,11 @@
+{
+    "model": "all-mpnet-base-v2",
+    "device": "cuda",
+    "sample_size": 500,
+    "batch_size": 32,
+    "inference_time_s": 0.4497638890170492,
+    "avg_cpu_percent": 16.72,
+    "peak_cpu_percent": 24.4,
+    "avg_gpu_percent": 43.0,
+    "peak_gpu_percent": 43
+}
