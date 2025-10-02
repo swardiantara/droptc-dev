@@ -60,27 +60,49 @@ def extract_message(evidence_file: str) -> list[str]:
     Returns:
         Pandas dataframe containing the timestamp and message column.
     """
-    df = pd.read_csv(evidence_file, skiprows=1) # since the first row contains sep=,
-    if 'CUSTOM.date [local]' in df.columns and 'CUSTOM.updateTime [local]' in df.columns and 'APP.tip' in df.columns:
-        messages = df[['CUSTOM.date [local]', 'CUSTOM.updateTime [local]', 'APP.tip']]
-        messages = messages.rename(columns={'CUSTOM.date [local]': 'date', 'CUSTOM.updateTime [local]': 'time', 'APP.tip': 'message'})
-    elif 'CUSTOM.date [local]' in df.columns and 'CUSTOM.updateTime [local]' in df.columns and 'APP.warning' in df.columns:
-        messages = df[['CUSTOM.date [local]', 'CUSTOM.updateTime [local]', 'APP.warning']]
-        messages = messages.rename(columns={'CUSTOM.date [local]': 'date', 'CUSTOM.updateTime [local]': 'time', 'APP.warning': 'message'})
-    elif 'CUSTOM.date [local]' in df.columns and 'CUSTOM.updateTime [local]' in df.columns and 'APP.error' in df.columns:
-        messages = df[['CUSTOM.date [local]', 'CUSTOM.updateTime [local]', 'APP.error']]
-        messages = messages.rename(columns={'CUSTOM.date [local]': 'date', 'CUSTOM.updateTime [local]': 'time', 'APP.error': 'message'})
-    else:
-        raise ValueError("The required columns are not present in the CSV file.")
+    date = []
+    time = []
+    # message_type = []
+    message = []
+    file_df = pd.read_csv(evidence_file, skiprows=1) # since the first row contains sep=,
+    timeline_df = file_df[['CUSTOM.date [local]', 'CUSTOM.updateTime [local]', 'APP.tip', 'APP.warning']]
+    for i, row in timeline_df.iterrows():
+        if not pd.isna(row['APP.tip']):
+            date.append(row['CUSTOM.date [local]'])
+            time.append(row['CUSTOM.updateTime [local]'])
+            # message_type.append('tip')
+            message.append(row['APP.tip'])
+        if not pd.isna(row['APP.warning']):
+            date.append(row['CUSTOM.date [local]'])
+            time.append(row['CUSTOM.updateTime [local]'])
+            # message_type.append('warning')
+            message.append(row['APP.warning'])
+    parsed_df = pd.DataFrame({
+        'date': date,
+        'time': time,
+        # 'message_type': message_type,
+        'message': message
+    })
+    # if 'CUSTOM.date [local]' in df.columns and 'CUSTOM.updateTime [local]' in df.columns and 'APP.tip' in df.columns:
+    #     messages = df[['CUSTOM.date [local]', 'CUSTOM.updateTime [local]', 'APP.tip']]
+    #     messages = messages.rename(columns={'CUSTOM.date [local]': 'date', 'CUSTOM.updateTime [local]': 'time', 'APP.tip': 'message'})
+    # elif 'CUSTOM.date [local]' in df.columns and 'CUSTOM.updateTime [local]' in df.columns and 'APP.warning' in df.columns:
+    #     messages = df[['CUSTOM.date [local]', 'CUSTOM.updateTime [local]', 'APP.warning']]
+    #     messages = messages.rename(columns={'CUSTOM.date [local]': 'date', 'CUSTOM.updateTime [local]': 'time', 'APP.warning': 'message'})
+    # elif 'CUSTOM.date [local]' in df.columns and 'CUSTOM.updateTime [local]' in df.columns and 'APP.error' in df.columns:
+    #     messages = df[['CUSTOM.date [local]', 'CUSTOM.updateTime [local]', 'APP.error']]
+    #     messages = messages.rename(columns={'CUSTOM.date [local]': 'date', 'CUSTOM.updateTime [local]': 'time', 'APP.error': 'message'})
+    # else:
+    #     raise ValueError("The required columns are not present in the CSV file.")
     
-    # Combine date and time into a single timestamp column
-    messages['timestamp'] = pd.to_datetime(messages['date'] + ' ' + messages['time'], errors='coerce')
-    # messages = messages.drop(columns=['date', 'time'])
-    messages = messages.dropna(subset=['timestamp', 'message'])
-    messages = messages.sort_values(by='timestamp').reset_index(drop=True)
-    messages = messages.drop(columns=['timestamp'])
+    # # Combine date and time into a single timestamp column
+    # messages['timestamp'] = pd.to_datetime(messages['date'] + ' ' + messages['time'], errors='coerce')
+    # # messages = messages.drop(columns=['date', 'time'])
+    # messages = messages.dropna(subset=['timestamp', 'message'])
+    # messages = messages.sort_values(by='timestamp').reset_index(drop=True)
+    # messages = messages.drop(columns=['timestamp'])
     
-    return messages
+    return parsed_df
 
 
 def interpretability_report(model, tokenizer, config: dict, device, workdir: str, test_set: pd.DataFrame) -> pd.DataFrame:

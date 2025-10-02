@@ -89,6 +89,14 @@ def segment_message(record: str) -> list[str]:
     return cleaned_sentences
 
 
+def segment_log_message(record: str) -> list[str]:
+    # Split on .; or . followed by space and capital letter
+    sentences = re.split(r'\.;\s*|\.\s+(?=[A-Z])', record)
+    sentences = [s.strip().rstrip(';').rstrip('.') + '.' for s in sentences if s.strip()]
+
+    return sentences
+
+
 def segment_evidence(evidence_file: str, output_dir: str) -> pd.DataFrame:
     """
     Segments log messages from a CSV evidence file and saves the segmented output to an Excel file.
@@ -123,7 +131,7 @@ def segment_evidence(evidence_file: str, output_dir: str) -> pd.DataFrame:
         time = row['time']
         message = row['message']
         
-        segmented_sentences = segment_message(message)
+        segmented_sentences = segment_log_message(message)
         
         for sentence in segmented_sentences:
             dates.append(date)
