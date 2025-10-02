@@ -12,8 +12,10 @@ try:
 except ImportError:
     NVML_AVAILABLE = False
 
+from torch.utils.data import DataLoader
 from transformers import AutoTokenizer, AutoModel
 from src.droptc.model import DroPTC
+from src.droptc.utils import SentenceDataset
 
 # Helper class to monitor system resources in a separate thread
 class SystemMonitor(threading.Thread):
@@ -80,13 +82,18 @@ def get_prediction_pipeline(model_name, device):
     classifier.load_state_dict(torch.load(classifier_path, map_location=device))
     classifier.eval()
 
-    def predict(sentences):
+    def predict(test_loader):
         """Function to run the full prediction pipeline."""
-        inputs = tokenizer(sentences, padding=True, truncation=True, return_tensors="pt").to(device)
+        all_preds = []
         with torch.no_grad():
-            outputs = classifier(**inputs)
-            _, preds = torch.max(outputs, dim=1)
-        return preds.cpu().numpy()
+            for batch in test_loader:
+                input_ids = batch["input_ids"].to(device)
+                attention_mask = batch["attention_mask"].to(device)
+                outputs = classifier(input_ids, attention_mask)
+                _, preds = torch.max(outputs, dim=1)
+                all_preds.extend(preds.cpu().numpy())
+        
+        return all_preds
 
     return predict
 
@@ -108,9 +115,9 @@ def run_single_test(model_name, device, data_sample):
     # This helps to cache models and initialize CUDA contexts to avoid one-off startup costs
     try:
         print("    Performing warm-up run...")
-        warmup_sample = data_sample[:10] if len(data_sample) > 10 else data_sample
+        warmup_sample = iter(data_sample)
         if warmup_sample:
-            predict_pipeline(warmup_sample)
+            predict_pipeline(next(warmup_sample))
         print("    Warm-up complete.")
     except Exception as e:
         print(f"    ERROR during warm-up: {e}")
@@ -120,9 +127,9 @@ def run_single_test(model_name, device, data_sample):
     monitor = SystemMonitor(device=device)
     
     # The data_sample is already a list of sentences
-    sentences_to_predict = data_sample
+    # sentences_to_predict = data_sample
 
-    if not sentences_to_predict:
+    if not data_sample:
         print("    No sentences provided. Skipping test.")
         return None
 
@@ -132,7 +139,7 @@ def run_single_test(model_name, device, data_sample):
     start_time = time.perf_counter()
 
     # Execute the pipeline
-    predict_pipeline(sentences_to_predict)
+    predict_pipeline(data_sample)
 
     torch.cuda.synchronize() if device == 'cuda' else None
     end_time = time.perf_counter()
@@ -241,8 +248,11 @@ def run_efficiency_test(args, workdir: str):
     # Resample the dataframe to the target args.sample_size
     resampled_df = resample_dataframe(full_df, args.sample_size)
     sample_data = resampled_df['sentence'].tolist()
-    
-    result = run_single_test(args.model_name, args.device, sample_data)
+    # data loader sini. ganti sample_data jadi data loader
+    tokenizer = AutoTokenizer.from_pretrained(f"sentence-transformers/{args.model_name}")
+    dataset = SentenceDataset(resampled_df, tokenizer, max_length=64)
+    data_loader = DataLoader(dataset, batch_size=32, shuffle=False)
+    result = run_single_test(args.model_name, args.device, data_loader)
 
     if result:
         all_results.append(result)
