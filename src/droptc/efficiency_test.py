@@ -63,26 +63,31 @@ class SystemMonitor(threading.Thread):
 def get_prediction_pipeline(model_name, device, batch_size=32):
     """Loads the model and tokenizer and returns a prediction function."""
     # Load embedding model
-    tokenizer = AutoTokenizer.from_pretrained(f"sentence-transformers/{model_name}")
-    embedding_model = AutoModel.from_pretrained(f"sentence-transformers/{model_name}").to(device)
-    embedding_model.eval()
-
-    # Load classifier
-    classifier = DroPTC(embedding_model, tokenizer, freeze_embedding=True).to(device)
+    
     
     if model_name == 'all-MiniLM-L6-v2':
         classifier_path = 'src/cli/model/pytorch_model.pt'
+        model_name = f"sentence-transformers/{model_name}"
     elif model_name == 'all-mpnet-base-v2':
         classifier_path = 'src/cli/model/pytorch_model_mpnet.pt'
+        model_name = f"sentence-transformers/{model_name}"
     elif model_name == 'neo-bert':
         classifier_path = 'src/cli/model/pytorch_model_neo.pt'
+        model_name = 'chandar-lab/NeoBERT'
     elif model_name == 'modern-bert':
         classifier_path = 'src/cli/model/pytorch_model_modern.pt'
+        model_name = 'answerdotai/ModernBERT-base'
     else:
         classifier_path = 'src/cli/model/pytorch_model_bert.pt'
     if not os.path.exists(classifier_path):
         raise FileNotFoundError(f"Classifier model not found at {classifier_path}. Please ensure the path is correct.")
         
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    embedding_model = AutoModel.from_pretrained(model_name).to(device)
+    embedding_model.eval()
+
+    # Load classifier
+    classifier = DroPTC(embedding_model, tokenizer, freeze_embedding=True).to(device)
     classifier.load_state_dict(torch.load(classifier_path, map_location=device))
     classifier.eval()
 
