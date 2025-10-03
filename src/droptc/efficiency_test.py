@@ -82,8 +82,8 @@ def get_prediction_pipeline(model_name, device, batch_size=32):
     if not os.path.exists(classifier_path):
         raise FileNotFoundError(f"Classifier model not found at {classifier_path}. Please ensure the path is correct.")
         
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    embedding_model = AutoModel.from_pretrained(model_name).to(device)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    embedding_model = AutoModel.from_pretrained(model_name, trust_remote_code=True).to(device)
     embedding_model.eval()
 
     # Load classifier
