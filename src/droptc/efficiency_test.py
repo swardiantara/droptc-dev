@@ -72,8 +72,14 @@ def get_prediction_pipeline(model_name, device, batch_size=32):
     
     if model_name == 'all-MiniLM-L6-v2':
         classifier_path = 'src/cli/model/pytorch_model.pt'
-    else:
+    elif model_name == 'all-mpnet-base-v2':
         classifier_path = 'src/cli/model/pytorch_model_mpnet.pt'
+    elif model_name == 'neo-bert':
+        classifier_path = 'src/cli/model/pytorch_model_neo.pt'
+    elif model_name == 'modern-bert':
+        classifier_path = 'src/cli/model/pytorch_model_modern.pt'
+    else:
+        classifier_path = 'src/cli/model/pytorch_model_bert.pt'
     if not os.path.exists(classifier_path):
         raise FileNotFoundError(f"Classifier model not found at {classifier_path}. Please ensure the path is correct.")
         
@@ -243,7 +249,7 @@ def main():
     parser = argparse.ArgumentParser()
     # Required arguments
     parser.add_argument('--sample_size', type=int, default=1000, help='Number of samples')
-    parser.add_argument('--model_name', type=str, choices=['all-MiniLM-L6-v2', 'all-mpnet-base-v2'], default='all-MiniLM-L6-v2', help='Type of Word Embdding used. Default: `all-MiniLM-L6-v2`')
+    parser.add_argument('--model_name', type=str, choices=['all-MiniLM-L6-v2', 'all-mpnet-base-v2', 'neo-bert', 'modern-bert', 'bert-base-uncased'], default='all-MiniLM-L6-v2', help='Type of Word Embdding used. Default: `all-MiniLM-L6-v2`')
     parser.add_argument('--device', type=str, choices=['cpu', 'cuda'], default='cpu',
                     help="Device to perform the computation. Default: `cpu`.")
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size for inference.')
