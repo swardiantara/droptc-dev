@@ -1,5 +1,5 @@
 #!/bin/bash
-models=( all-MiniLM-L6-v2 all-mpnet-base-v2 )
+models=( neo-bert modern-bert bert-base-uncased )
 devices=( cpu cuda )
 sizes=( 1000 5000 10000 50000 100000 500000 1000000 )
 for model in "${models[@]}"; do
