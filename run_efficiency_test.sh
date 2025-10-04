@@ -1,5 +1,5 @@
 #!/bin/bash
-scenarios=( droptc drolove dronelog neurallog transsentlog )
+scenarios=( drolove dronelog neurallog transsentlog )
 models=( all-MiniLM-L6-v2 all-mpnet-base-v2 neo-bert modern-bert bert-base-uncased )
 devices=( cpu cuda )
 sizes=( 100 250 500 750 1000 2500 5000 10000 )
