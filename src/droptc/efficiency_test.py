@@ -14,7 +14,7 @@ except ImportError:
 
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer, AutoModel
-from src.droptc.model import DroPTC
+from src.droptc.model import DroPTC, DroneLog, NeuralLog, TransSentLog, DroLoVe
 from src.droptc.utils import SentenceDataset
 from src.droptc.train_classifier import slabel2idx
 
@@ -59,35 +59,71 @@ class SystemMonitor(threading.Thread):
         avg_gpu = sum(self.gpu_usage) / len(self.gpu_usage) if self.gpu_usage else 0
         peak_gpu = max(self.gpu_usage) if self.gpu_usage else 0
         return avg_cpu, peak_cpu, avg_gpu, peak_gpu
+    
 
-def get_prediction_pipeline(model_name, device, batch_size=32):
-    """Loads the model and tokenizer and returns a prediction function."""
-    # Load embedding model
-    
-    
-    if model_name == 'all-MiniLM-L6-v2':
-        classifier_path = 'src/cli/model/pytorch_model.pt'
-        model_name = f"sentence-transformers/{model_name}"
-    elif model_name == 'all-mpnet-base-v2':
-        classifier_path = 'src/cli/model/pytorch_model_mpnet.pt'
+def get_embedding_model(model_name: str, device) -> tuple[AutoModel, AutoTokenizer]:
+    """Loads the embedding model and tokenizer."""
+    if model_name.startswith('all'):
         model_name = f"sentence-transformers/{model_name}"
     elif model_name == 'neo-bert':
-        classifier_path = 'src/cli/model/pytorch_model_neo.pt'
         model_name = 'chandar-lab/NeoBERT'
     elif model_name == 'modern-bert':
-        classifier_path = 'src/cli/model/pytorch_model_modern.pt'
         model_name = 'answerdotai/ModernBERT-base'
-    else:
-        classifier_path = 'src/cli/model/pytorch_model_bert.pt'
-    if not os.path.exists(classifier_path):
-        raise FileNotFoundError(f"Classifier model not found at {classifier_path}. Please ensure the path is correct.")
-        
+
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     embedding_model = AutoModel.from_pretrained(model_name, trust_remote_code=True).to(device)
     embedding_model.eval()
+    return embedding_model, tokenizer
 
+
+def get_classifier(args):
+    """Initializes the classifier model based on the scenario."""
+    embedding_model, tokenizer = get_embedding_model(args.model_name, args.device)
+    scenario = args.scenario
+    if scenario == 'droptc':
+        return DroPTC(embedding_model, tokenizer, freeze_embedding=True).to(args.device), tokenizer
+    elif scenario == 'drolove':
+        return DroLoVe(embedding_model, tokenizer, freeze_embedding=True).to(args.device), tokenizer
+    elif scenario == 'neurallog':
+        return NeuralLog(embedding_model, tokenizer, freeze_embedding=True).to(args.device), tokenizer
+    elif scenario == 'transsentlog':
+        return TransSentLog(embedding_model, tokenizer, freeze_embedding=True).to(args.device), tokenizer
+    elif scenario == 'dronelog':
+        return DroneLog(embedding_model, tokenizer, freeze_embedding=True).to(args.device), tokenizer
+    else:
+        raise ValueError(f"Unknown scenario: {scenario}")
+
+def get_prediction_pipeline(args):
+    """Loads the model and tokenizer and returns a prediction function."""
+    # Load embedding model
+    model_name = args.model_name
+    device = args.device
+    batch_size = args.batch_size
+    if args.scenario == 'droptc':
+        if model_name == 'all-MiniLM-L6-v2':
+            classifier_path = 'src/cli/model/pytorch_model.pt'
+        elif model_name == 'all-mpnet-base-v2':
+            classifier_path = 'src/cli/model/pytorch_model_mpnet.pt'
+        elif model_name == 'neo-bert':
+            classifier_path = 'src/cli/model/pytorch_model_neo.pt'
+        elif model_name == 'modern-bert':
+            classifier_path = 'src/cli/model/pytorch_model_modern.pt'
+        else:
+            classifier_path = 'src/cli/model/pytorch_model_bert.pt'
+    elif args.scenario == 'drolove':
+        classifier_path = 'src/cli/model/pytorch_model_drolove.pt'
+    elif args.scenario == 'neurallog':
+        classifier_path = 'src/cli/model/pytorch_model_neurallog.pt'
+    elif args.scenario == 'transsentlog':
+        classifier_path = 'src/cli/model/pytorch_model_transsentlog.pt'
+    elif args.scenario == 'dronelog':
+        classifier_path = 'src/cli/model/pytorch_model_dronelog.pt'
+
+    if not os.path.exists(classifier_path):
+        raise FileNotFoundError(f"Classifier model not found at {classifier_path}. Please ensure the path is correct.")
+        
     # Load classifier
-    classifier = DroPTC(embedding_model, tokenizer, freeze_embedding=True).to(device)
+    classifier, tokenizer = get_classifier(args)
     classifier.load_state_dict(torch.load(classifier_path, map_location=device))
     classifier.eval()
 
@@ -109,15 +145,18 @@ def get_prediction_pipeline(model_name, device, batch_size=32):
 
     return predict
 
-def run_single_test(model_name, device, data_sample: pd.DataFrame, batch_size):
+def run_single_test(args, data_sample: pd.DataFrame):
     """
     Runs a single efficiency test for a given configuration.
     Includes a warm-up run to ensure fair measurement.
     """
+    model_name = args.model_name
+    device = args.device
+    batch_size = args.batch_size
     print(f"  Testing model: {model_name} on {device.upper()} with {len(data_sample)} samples...")
 
     # 1. Load model and create prediction pipeline
-    predict_pipeline = get_prediction_pipeline(model_name, device, batch_size)
+    predict_pipeline = get_prediction_pipeline(args)
 
     # 2. Warm-up run (not measured)
     print("    Performing warm-up run...")
@@ -238,7 +277,7 @@ def run_efficiency_test(args, workdir: str):
         'label': resampled_df['label'].tolist()
     })
     
-    result = run_single_test(args.model_name, args.device, sample_data, args.batch_size)
+    result = run_single_test(args,  sample_data)
 
     if result:
         # Ensure the output directory exists
@@ -253,14 +292,15 @@ def run_efficiency_test(args, workdir: str):
 def main():
     parser = argparse.ArgumentParser()
     # Required arguments
-    parser.add_argument('--sample_size', type=int, default=1000, help='Number of samples')
+    parser.add_argument('--sample_size', type=int, default=500, help='Number of samples')
+    parser.add_argument("--scenario", type=str, choices=['droptc', 'drolove', 'dronelog', 'neurallog', 'transsentlog'], default="droptc", help="The model used. Default: `droptc`")
     parser.add_argument('--model_name', type=str, choices=['all-MiniLM-L6-v2', 'all-mpnet-base-v2', 'neo-bert', 'modern-bert', 'bert-base-uncased'], default='all-MiniLM-L6-v2', help='Type of Word Embdding used. Default: `all-MiniLM-L6-v2`')
     parser.add_argument('--device', type=str, choices=['cpu', 'cuda'], default='cpu',
                     help="Device to perform the computation. Default: `cpu`.")
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size for inference.')
 
     args = parser.parse_args()
-    output_path = os.path.join('experiments', 'efficiency_test', args.model_name, args.device, str(args.sample_size))
+    output_path = os.path.join('experiments', 'efficiency_test', args.scenario, args.model_name, args.device, str(args.sample_size))
     os.makedirs(output_path, exist_ok=True)
     if os.path.exists(os.path.join(output_path, 'result.json')):
         print('Scenario has been executed. Skipped!')
