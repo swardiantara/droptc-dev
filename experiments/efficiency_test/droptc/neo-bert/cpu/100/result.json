@@ -1,0 +1,11 @@
+{
+    "model": "neo-bert",
+    "device": "cpu",
+    "sample_size": 100,
+    "batch_size": 32,
+    "inference_time_s": 4.508813694003038,
+    "avg_cpu_percent": 65.26444444444445,
+    "peak_cpu_percent": 67.8,
+    "avg_gpu_percent": 0,
+    "peak_gpu_percent": 0
+}

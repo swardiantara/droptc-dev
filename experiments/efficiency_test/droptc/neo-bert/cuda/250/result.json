@@ -1,0 +1,11 @@
+{
+    "model": "neo-bert",
+    "device": "cuda",
+    "sample_size": 250,
+    "batch_size": 32,
+    "inference_time_s": 0.4766494260111358,
+    "avg_cpu_percent": 3.3200000000000003,
+    "peak_cpu_percent": 4.2,
+    "avg_gpu_percent": 61.0,
+    "peak_gpu_percent": 61
+}

@@ -1,0 +1,11 @@
+{
+    "model": "modern-bert",
+    "device": "cuda",
+    "sample_size": 750,
+    "batch_size": 32,
+    "inference_time_s": 0.8861954059975687,
+    "avg_cpu_percent": 3.7222222222222223,
+    "peak_cpu_percent": 4.5,
+    "avg_gpu_percent": 39.666666666666664,
+    "peak_gpu_percent": 91
+}

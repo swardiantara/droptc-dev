@@ -1,0 +1,11 @@
+{
+    "model": "bert-base-uncased",
+    "device": "cuda",
+    "sample_size": 750,
+    "batch_size": 32,
+    "inference_time_s": 0.6366012349899393,
+    "avg_cpu_percent": 3.685714285714286,
+    "peak_cpu_percent": 4.6,
+    "avg_gpu_percent": 27.0,
+    "peak_gpu_percent": 27
+}

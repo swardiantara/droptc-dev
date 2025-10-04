@@ -1,0 +1,11 @@
+{
+    "model": "modern-bert",
+    "device": "cpu",
+    "sample_size": 750,
+    "batch_size": 32,
+    "inference_time_s": 19.397598547991947,
+    "avg_cpu_percent": 66.40360824742268,
+    "peak_cpu_percent": 67.6,
+    "avg_gpu_percent": 0,
+    "peak_gpu_percent": 0
+}
