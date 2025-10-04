@@ -8,7 +8,14 @@
 # python -m src.droptc.train_classifier --scenario droptc --embedding DroPTC-all-MiniLM-L6-v2-sentence --seed 99511865 --feature_col sentence --n_epochs 20 --save_model --overwrite
 
 python -m src.droptc.train_classifier --scenario drolove --embedding bert-base-uncased --seed 90995999 --feature_col sentence --n_epochs 20 --save_model --overwrite
+cp experiments/drolove/sentence/bert-base-uncased/unfreeze/90995999/sentence_pytorch_model.pt src/cli/model/pytorch_model_drolove.pt
 python -m src.droptc.train_classifier --scenario dronelog --embedding DroPTC-all-mpnet-base-v2-sentence --seed 14298463 --feature_col sentence --n_epochs 20 --save_model --overwrite
+cp experiments/dronelog/sentence/DroPTC-all-mpnet-base-v2-sentence/unfreeze/14298463/sentence_pytorch_model.pt src/cli/model/pytorch_model_dronelog.pt
 python -m src.droptc.train_classifier --scenario neurallog --embedding bert-base-uncased --seed 70681460 --feature_col sentence --n_epochs 20 --save_model --overwrite
+cp experiments/neurallog/sentence/bert-base-uncased/unfreeze/70681460/sentence_pytorch_model.pt src/cli/model/pytorch_model_neurallog.pt
 python -m src.droptc.train_classifier --scenario transsentlog --embedding bert-base-uncased --seed 14298463 --feature_col sentence --n_epochs 20 --save_model --overwrite
+cp experiments/transsentlog/sentence/bert-base-uncased/unfreeze/14298463/sentence_pytorch_model.pt src/cli/model/pytorch_model_transsentlog.pt
+
+
+
 echo "Best models have been re-trained and saved."
