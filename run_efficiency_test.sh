@@ -1,5 +1,5 @@
 #!/bin/bash
-scenarios=( drolove dronelog neurallog transsentlog )
+scenarios=( droptc drolove dronelog neurallog transsentlog )
 models=( all-MiniLM-L6-v2 all-mpnet-base-v2 neo-bert modern-bert bert-base-uncased )
 devices=( cpu cuda )
 sizes=( 100 250 500 750 1000 2500 5000 10000 )
@@ -15,7 +15,7 @@ for scenario in "${scenarios[@]}"; do
                 fi
                 for size in "${sizes[@]}"; do
                     echo "Running efficiency test with scenario: $scenario, model: $model, device: $device, sample size: $size"
-                    python -m src.droptc.efficiency_test --scenario "$scenario" --model_name "$model" --device "$device" --sample_size $size
+                    python -m src.droptc.efficiency_test --scenario "$scenario" --model_name "$model" --device "$device" --sample_size $size --overwrite
                 done
             done
         done
@@ -31,7 +31,7 @@ for scenario in "${scenarios[@]}"; do
             fi
             for size in "${sizes[@]}"; do
                 echo "Running efficiency test with scenario: $scenario, model: $model, device: $device, sample size: $size"
-                python -m src.droptc.efficiency_test --scenario "$scenario" --model_name "$model" --device "$device" --sample_size $size
+                python -m src.droptc.efficiency_test --scenario "$scenario" --model_name "$model" --device "$device" --sample_size $size --overwrite
             done
         done
     else
@@ -45,7 +45,7 @@ for scenario in "${scenarios[@]}"; do
             fi
             for size in "${sizes[@]}"; do
                 echo "Running efficiency test with scenario: $scenario, model: $model, device: $device, sample size: $size"
-                python -m src.droptc.efficiency_test --scenario "$scenario" --model_name "$model" --device "$device" --sample_size $size
+                python -m src.droptc.efficiency_test --scenario "$scenario" --model_name "$model" --device "$device" --sample_size $size --overwrite
             done
         done
     fi
