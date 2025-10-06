@@ -3,9 +3,13 @@
     "device": "cuda",
     "sample_size": 100,
     "batch_size": 32,
-    "inference_time_s": 0.11154081200947985,
-    "avg_cpu_percent": 8.85,
-    "peak_cpu_percent": 17.7,
-    "avg_gpu_percent": 43.0,
-    "peak_gpu_percent": 43
+    "inference_time_s": 0.024106033029966056,
+    "avg_cpu_percent": 0.0,
+    "peak_cpu_percent": 0.0,
+    "avg_gpu_percent": 6.0,
+    "peak_gpu_percent": 6,
+    "avg_memory_rss_mb": 1351.2109375,
+    "peak_memory_rss_mb": 1351.2109375,
+    "avg_gpu_memory_mb": 1841.1875,
+    "peak_gpu_memory_mb": 1841.1875
 }

@@ -3,9 +3,13 @@
     "device": "cpu",
     "sample_size": 5000,
     "batch_size": 32,
-    "inference_time_s": 13.44310752399906,
-    "avg_cpu_percent": 66.25333333333334,
-    "peak_cpu_percent": 67.9,
+    "inference_time_s": 5.554846472979989,
+    "avg_cpu_percent": 59.4375,
+    "peak_cpu_percent": 67.6,
     "avg_gpu_percent": 0,
-    "peak_gpu_percent": 0
+    "peak_gpu_percent": 0,
+    "avg_memory_rss_mb": 2080.2855050223216,
+    "peak_memory_rss_mb": 2952.1015625,
+    "avg_gpu_memory_mb": 0,
+    "peak_gpu_memory_mb": 0
 }
