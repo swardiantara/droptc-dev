@@ -26,8 +26,15 @@ class SystemMonitor(threading.Thread):
         self.gpu_index = gpu_index
         self.stopped = threading.Event()
         self.cpu_usage = []
+        self.mem_rss = []
         self.gpu_usage = []
+        self.gpu_mem = []
         self.daemon = True
+        # Track current process for RSS memory measurements
+        try:
+            self.process = psutil.Process()
+        except Exception:
+            self.process = None
         if self.device == 'cuda' and NVML_AVAILABLE:
             pynvml.nvmlInit()
             self.handle = pynvml.nvmlDeviceGetHandleByIndex(self.gpu_index)
@@ -45,6 +52,21 @@ class SystemMonitor(threading.Thread):
                 except pynvml.NVMLError:
                     # Handle cases where the GPU might not be available or query fails
                     self.gpu_usage.append(0)
+                # record GPU memory used (bytes -> MB)
+                try:
+                    mem_info = pynvml.nvmlDeviceGetMemoryInfo(self.handle)
+                    self.gpu_mem.append(mem_info.used / (1024 ** 2))
+                except Exception:
+                    self.gpu_mem.append(0)
+            
+            # Record process RSS memory (in MB) if available
+            if self.process is not None:
+                try:
+                    rss = self.process.memory_info().rss / (1024 ** 2)
+                    self.mem_rss.append(rss)
+                except Exception:
+                    # fallback
+                    self.mem_rss.append(0)
             
             time.sleep(0.1) # Poll every 100ms
 
@@ -58,7 +80,11 @@ class SystemMonitor(threading.Thread):
         peak_cpu = max(self.cpu_usage) if self.cpu_usage else 0
         avg_gpu = sum(self.gpu_usage) / len(self.gpu_usage) if self.gpu_usage else 0
         peak_gpu = max(self.gpu_usage) if self.gpu_usage else 0
-        return avg_cpu, peak_cpu, avg_gpu, peak_gpu
+        avg_mem = sum(self.mem_rss) / len(self.mem_rss) if self.mem_rss else 0
+        peak_mem = max(self.mem_rss) if self.mem_rss else 0
+        avg_gpu_mem = sum(self.gpu_mem) / len(self.gpu_mem) if self.gpu_mem else 0
+        peak_gpu_mem = max(self.gpu_mem) if self.gpu_mem else 0
+        return avg_cpu, peak_cpu, avg_gpu, peak_gpu, avg_mem, peak_mem, avg_gpu_mem, peak_gpu_mem
     
 
 def get_embedding_model(model_name: str, device) -> tuple[AutoModel, AutoTokenizer]:
@@ -194,12 +220,14 @@ def run_single_test(args, data_sample: pd.DataFrame):
     monitor.stop()
     
     inference_time = end_time - start_time
-    avg_cpu, peak_cpu, avg_gpu, peak_gpu = monitor.get_results()
+    avg_cpu, peak_cpu, avg_gpu, peak_gpu, avg_mem, peak_mem, avg_gpu_mem, peak_gpu_mem = monitor.get_results()
 
     print(f"    Inference Time: {inference_time:.4f}s")
     print(f"    Avg/Peak CPU: {avg_cpu:.2f}% / {peak_cpu:.2f}%")
+    print(f"    Avg/Peak RAM (MB): {avg_mem:.1f} / Peak RAM (MB): {peak_mem:.1f}")
     if device == 'cuda':
         print(f"    Avg/Peak GPU: {avg_gpu:.2f}% / {peak_gpu:.2f}%")
+        print(f"    Avg/Peak GPU Memory (MB): {avg_gpu_mem:.1f} / {peak_gpu_mem:.1f}")
 
     return {
         "model": model_name,
@@ -211,6 +239,10 @@ def run_single_test(args, data_sample: pd.DataFrame):
         "peak_cpu_percent": peak_cpu,
         "avg_gpu_percent": avg_gpu,
         "peak_gpu_percent": peak_gpu,
+        "avg_memory_rss_mb": avg_mem,
+        "peak_memory_rss_mb": peak_mem,
+        "avg_gpu_memory_mb": avg_gpu_mem,
+        "peak_gpu_memory_mb": peak_gpu_mem,
     }
 
 
