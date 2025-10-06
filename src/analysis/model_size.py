@@ -29,7 +29,9 @@ def main():
         model_size[scenario]['total_params'] = total_params
         model_size[scenario]['trainable_params'] = trainable_params
         print(f"Model: {model.__class__.__name__}, Total Params: {total_params}, Trainable Params: {trainable_params}")
-
+    
+    output_dir = os.path.join('experiments', 'analysis')
+    os.makedirs(output_dir, exist_ok=True)
     with open(os.path.join('experiments', 'analysis', 'model_size.json'), 'w') as f:
         json.dump(model_size, f, indent=4)
 
