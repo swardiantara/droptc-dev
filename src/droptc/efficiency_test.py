@@ -301,13 +301,16 @@ def main():
     parser.add_argument('--device', type=str, choices=['cpu', 'cuda'], default='cpu',
                     help="Device to perform the computation. Default: `cpu`.")
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size for inference.')
+    parser.add_argument('--overwrite', action='store_true',
+                        help="Wether to overwrite the previous run.")
 
     args = parser.parse_args()
     output_path = os.path.join('experiments', 'efficiency_test', args.scenario, args.model_name, args.device, str(args.sample_size))
     os.makedirs(output_path, exist_ok=True)
-    if os.path.exists(os.path.join(output_path, 'result.json')):
+    if os.path.exists(os.path.join(output_path, 'result.json')) and not args.overwrite:
         print('Scenario has been executed. Skipped!')
         return
+    
     run_efficiency_test(args, output_path)
 
 if __name__ == '__main__':
