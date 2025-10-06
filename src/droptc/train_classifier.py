@@ -370,6 +370,7 @@ def main():
     prediction_df, preds_decoded, tests_decoded = evaluate(best_model, test_loader, test_df, args, device)
     report_results(prediction_df, preds_decoded, tests_decoded, workdir, args, best_epoch, best_f1_epoch, best_acc_epoch)
     visualize_and_save(merged_loader, idx2pro, best_model, device, workdir, merged_df, args, best_model_state)
+    torch.backends.cudnn.enabled=False
     interpretability_report(best_model, tokenizer, args, device, workdir)
     return exit(0)
 
