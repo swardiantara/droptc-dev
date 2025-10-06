@@ -1,0 +1,38 @@
+{
+    "droptc-minilm": {
+        "total_params": 22763399,
+        "trainable_params": 22763399
+    },
+    "droptc-mpnet": {
+        "total_params": 109585799,
+        "trainable_params": 109585799
+    },
+    "droptc-bert": {
+        "total_params": 109581575,
+        "trainable_params": 109581575
+    },
+    "droptc-neo": {
+        "total_params": 221764871,
+        "trainable_params": 221764871
+    },
+    "droptc-modern": {
+        "total_params": 149113607,
+        "trainable_params": 149113607
+    },
+    "neurallog": {
+        "total_params": 109581575,
+        "trainable_params": 109581575
+    },
+    "drolove": {
+        "total_params": 109581575,
+        "trainable_params": 109581575
+    },
+    "dronelog": {
+        "total_params": 109585799,
+        "trainable_params": 109585799
+    },
+    "transsentlog": {
+        "total_params": 109581575,
+        "trainable_params": 109581575
+    }
+}
