@@ -128,18 +128,21 @@ def get_prediction_pipeline(args):
     classifier.eval()
 
     def predict(sentences: pd.DataFrame):
-        """Function to run the full prediction pipeline in batches."""
+        # """Function to run the full prediction pipeline in batches."""
+        """Function to run the full prediction pipeline."""
+        inputs = tokenizer(sentences['sentence'].to_list(), padding=True, truncation=True, max_length=64, return_tensors="pt").to(device)
         all_preds = []
-        dataset = SentenceDataset(sentences, tokenizer, max_length=64)
-        data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+        # dataset = SentenceDataset(sentences, tokenizer, max_length=64)
+        # data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
         with torch.no_grad():
-            for batch in data_loader:
-                input_ids = batch["input_ids"].to(device)
-                attention_mask = batch["attention_mask"].to(device)
-                outputs = classifier(input_ids, attention_mask)
-                _, preds = torch.max(outputs, dim=1)
-                all_preds.extend(preds.cpu().numpy())
+            # for batch in data_loader:
+            # input_ids = batch["input_ids"].to(device)
+            # attention_mask = batch["attention_mask"].to(device)
+            # outputs = classifier(input_ids, attention_mask)
+            outputs = classifier(**inputs)
+            _, preds = torch.max(outputs, dim=1)
+            all_preds.extend(preds.cpu().numpy())
         
         return all_preds
 
