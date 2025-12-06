@@ -90,6 +90,10 @@ def get_args():
     parser.add_argument('--encoder', type=str, choices=['transformer', 'lstm', 'gru', 'linear'], default='linear',
                     help="Encoder architecture used to perform computation. Default: `linear`.")
     parser.add_argument('--dim_reduce', type=str, choices=['tsne', 'pca-tsne', 'umap', 'pca', 'isomap'], default='pca-tsne', help='Dimensional reduction method for data visualization. Default: `pca-tsne`')
+    parser.add_argument('--loss_fn', type=str, choices=['ce', 'focal'], default='ce',
+                    help="Loss function to use for training. Default: `ce` (CrossEntropyLoss)")
+    parser.add_argument('--class_weight', choices=['uniform', 'balanced', 'inverse'], default='uniform',
+                    help="Wether to weigh the class based on the class frequency. Default: Uniform")
     parser.add_argument('--bidirectional', action='store_true',
                     help="Wether to use Bidirectionality for LSTM and GRU.")
     parser.add_argument('--n_heads', type=int, default=1,
@@ -125,6 +129,78 @@ def set_seed(seed: int = 42) -> None:
     # Set a fixed value for the hash seed
     os.environ["PYTHONHASHSEED"] = str(seed)
     # print(f"Random seed set as {seed}")
+
+
+class FocalLoss(torch.nn.Module):
+    """Focal Loss implementation for handling class imbalance.
+    
+    Uses class weights as alpha parameters for each class instead of a constant alpha.
+    Gamma is fixed to 2.0 (standard value).
+    """
+    def __init__(self, weight=None, gamma=2.0, reduction='mean'):
+        super(FocalLoss, self).__init__()
+        self.weight = weight  # Class weights used as alpha parameters
+        self.gamma = gamma  # Fixed at 2.0
+        self.reduction = reduction
+
+    def forward(self, inputs, targets):
+        ce_loss = torch.nn.functional.cross_entropy(inputs, targets, weight=self.weight, reduction='none')
+        pt = torch.exp(-ce_loss)
+        focal_loss = (1 - pt) ** self.gamma * ce_loss
+        
+        if self.reduction == 'mean':
+            return focal_loss.mean()
+        elif self.reduction == 'sum':
+            return focal_loss.sum()
+        else:
+            return focal_loss
+
+
+def compute_class_weights(labels, weight_type='uniform', num_classes=7):
+    """Compute class weights for handling class imbalance.
+    
+    Args:
+        labels: array of class labels
+        weight_type: 'uniform', 'balanced', or 'inverse'
+        num_classes: number of classes
+    
+    Returns:
+        torch.Tensor of class weights
+    """
+    if weight_type == 'uniform':
+        return None
+    
+    labels_array = np.array(labels)
+    class_counts = np.bincount(labels_array, minlength=num_classes)
+    
+    if weight_type == 'balanced':
+        # Weight inversely proportional to class frequency
+        weights = 1.0 / (class_counts + 1e-8)
+        weights = weights / weights.sum() * num_classes
+    elif weight_type == 'inverse':
+        # Weight inversely proportional to class frequency (alternative)
+        total = len(labels_array)
+        weights = total / (num_classes * class_counts + 1e-8)
+    else:
+        return None
+    
+    return torch.FloatTensor(weights)
+
+
+def get_loss_fn(loss_type='ce', class_weights=None):
+    """Factory function to return the appropriate loss function.
+    
+    Args:
+        loss_type: 'ce' or 'focal'
+        class_weights: torch.Tensor of class weights or None
+    
+    Returns:
+        loss function instance
+    """
+    if loss_type == 'focal':
+        return FocalLoss(weight=class_weights, gamma=2.0, reduction='mean')
+    else:  # 'ce'
+        return torch.nn.CrossEntropyLoss(weight=class_weights, reduction='mean')
 
 
 
@@ -165,8 +241,17 @@ def get_dataloaders(train_df, test_df, tokenizer, args):
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     return merged_df, merged_loader, train_loader, test_loader
 
-def train(model, train_loader, test_loader, args, device):
-    criterion = torch.nn.CrossEntropyLoss(reduction='mean')
+def train(model, train_loader, test_loader, train_df, args, device):
+    # Compute class weights based on training data
+    class_weights = compute_class_weights(train_df['label'].tolist(), args.class_weight, num_classes=7)
+    if class_weights is not None:
+        class_weights = class_weights.to(device)
+    
+    # Get the appropriate loss function
+    criterion = get_loss_fn(args.loss_fn, class_weights)
+    if isinstance(criterion, FocalLoss):
+        criterion = criterion.to(device)
+    
     optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5)
     best_acc_epoch = float('-inf')
     best_f1_epoch = float('-inf')
@@ -353,7 +438,11 @@ def main():
     set_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     freeze = 'freeze' if args.freeze_embedding else 'unfreeze'
-    workdir = os.path.join(args.output_dir, args.scenario, args.feature_col, args.embedding, freeze, str(args.seed))
+    
+    # Create loss and class weight handler string for folder structure
+    loss_cw_handler = f"{args.loss_fn}-{args.class_weight}"
+    
+    workdir = os.path.join(args.output_dir, args.scenario, args.feature_col, args.embedding, freeze, loss_cw_handler, str(args.seed))
     print(f'current scenario: {workdir}')
     os.makedirs(workdir, exist_ok=True)
     if os.path.exists(os.path.join(workdir, 'scenario_arguments.json')) and not args.overwrite:
@@ -364,7 +453,7 @@ def main():
     merged_df, merged_loader, train_loader, test_loader = get_dataloaders(train_df, test_df, tokenizer, args)
     model_class = MODEL_REGISTRY[args.scenario]
     model = model_class(embedding_model, tokenizer, freeze_embedding=args.freeze_embedding).to(device)
-    best_model_state, best_epoch, best_f1_epoch, best_acc_epoch = train(model, train_loader, test_loader, args, device)
+    best_model_state, best_epoch, best_f1_epoch, best_acc_epoch = train(model, train_loader, test_loader, train_df, args, device)
     best_model = model_class(embedding_model, tokenizer, freeze_embedding=args.freeze_embedding).to(device)
     best_model.load_state_dict(best_model_state)
     prediction_df, preds_decoded, tests_decoded = evaluate(best_model, test_loader, test_df, args, device)

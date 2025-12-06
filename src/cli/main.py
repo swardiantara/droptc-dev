@@ -14,7 +14,7 @@ def parse_args():
     import argparse
     parser = argparse.ArgumentParser(description="Drone Log Analyzer")
     parser.add_argument("--config", default="src/cli/config.json", help="Path to the configuration file")
-    parser.add_argument("--evidence_dir", default=None, help="Path to the directory containing evidence files")
+    parser.add_argument("--evidence_dir", default="src/evidence/decrypted", help="Path to the directory containing evidence files")
     return parser.parse_args()
 
 def main():
