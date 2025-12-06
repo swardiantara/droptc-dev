@@ -1,0 +1,21 @@
+{
+    "feature_col": "sentence",
+    "scenario": "droptc",
+    "output_dir": "experiments",
+    "embedding": "DroPTC-all-MiniLM-L6-v2-sentence",
+    "encoder": "linear",
+    "dim_reduce": "pca-tsne",
+    "bidirectional": false,
+    "n_heads": 1,
+    "n_layers": 1,
+    "n_epochs": 20,
+    "batch_size": 8,
+    "seed": 52680723,
+    "freeze_embedding": false,
+    "save_model": false,
+    "device": "cuda",
+    "scenario_dir": "experiments/droptc/sentence/DroPTC-all-MiniLM-L6-v2-sentence/unfreeze/52680723",
+    "best_epoch": 9,
+    "best_val_f1": 0.9228980236202752,
+    "best_val_acc": 0.9234449760765551
+}
