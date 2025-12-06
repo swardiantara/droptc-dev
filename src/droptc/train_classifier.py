@@ -7,6 +7,7 @@ import argparse
 import torch
 
 import numpy as np
+from sklearn.preprocessing import LabelEncoder
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -156,34 +157,87 @@ class FocalLoss(torch.nn.Module):
             return focal_loss
 
 
-def compute_class_weights(labels, weight_type='uniform', num_classes=7):
+def compute_class_weights(labels, weight_type='uniform', num_classes=None, class_map=None):
     """Compute class weights for handling class imbalance.
-    
+
+    This function is careful to align weights with class indices. If you use a
+    custom mapping (e.g. `class_name -> index`) pass it via `class_map` so the
+    returned tensor matches your model's expected class ordering.
+
     Args:
-        labels: array of class labels
+        labels: iterable of labels (either integer indices or class names)
         weight_type: 'uniform', 'balanced', or 'inverse'
-        num_classes: number of classes
-    
+        num_classes: number of classes (optional if `class_map` provided)
+        class_map: optional dict mapping class_name -> class_index
+
     Returns:
-        torch.Tensor of class weights
+        torch.Tensor of class weights (length == num_classes) or None
     """
     if weight_type == 'uniform':
         return None
-    
-    labels_array = np.array(labels)
-    class_counts = np.bincount(labels_array, minlength=num_classes)
-    
+
+    # If class_map is provided, determine num_classes from it
+    if class_map is not None:
+        num_classes = len(class_map)
+
+    # If still unknown, try to infer from labels
+    if num_classes is None:
+        try:
+            labels_array = np.array(labels)
+            max_label = labels_array.max()
+            num_classes = int(max_label) + 1
+        except Exception:
+            raise ValueError("num_classes could not be inferred; provide num_classes or class_map")
+
+    # Initialize counts aligned to indices 0..num_classes-1
+    class_counts = np.zeros(num_classes, dtype=np.int64)
+
+    if class_map is not None:
+        # labels are assumed to be class names; map to indices
+        for lab in labels:
+            if lab in class_map:
+                idx = class_map[lab]
+                if 0 <= idx < num_classes:
+                    class_counts[idx] += 1
+            else:
+                # If label not in map, try converting to int
+                try:
+                    idx = int(lab)
+                    if 0 <= idx < num_classes:
+                        class_counts[idx] += 1
+                except Exception:
+                    # ignore unknown labels
+                    pass
+    else:
+        # labels should be integer indices
+        labels_array = np.array(labels)
+        # Clip/convert labels that are out-of-range
+        for lab in labels_array:
+            try:
+                idx = int(lab)
+                if 0 <= idx < num_classes:
+                    class_counts[idx] += 1
+            except Exception:
+                # ignore non-integer labels when no class_map provided
+                pass
+
+    # Avoid zero counts causing divide-by-zero
+    counts = class_counts.astype(float)
+    counts[counts == 0] = 0.0
+
     if weight_type == 'balanced':
         # Weight inversely proportional to class frequency
-        weights = 1.0 / (class_counts + 1e-8)
-        weights = weights / weights.sum() * num_classes
+        # Small epsilon to avoid division by zero
+        eps = 1e-8
+        inv = 1.0 / (counts + eps)
+        weights = inv / inv.sum() * num_classes
     elif weight_type == 'inverse':
-        # Weight inversely proportional to class frequency (alternative)
-        total = len(labels_array)
-        weights = total / (num_classes * class_counts + 1e-8)
+        total = counts.sum()
+        eps = 1e-8
+        weights = total / (num_classes * (counts + eps))
     else:
         return None
-    
+
     return torch.FloatTensor(weights)
 
 
@@ -206,13 +260,30 @@ def get_loss_fn(loss_type='ce', class_weights=None):
 
 # --- Modularized Pipeline Functions ---
 def prepare_data(args):
+    """Load datasets and encode labels using sklearn's LabelEncoder.
+
+    Assumes `problem_type` column contains the long class names (e.g.
+    'SurroundingEnvironment', 'RegulationViolation'). Fits the encoder on
+    the training set and transforms both train and test so indices are
+    consistent. Returns (train_df, test_df, label_encoder).
+    """
     train_df = pd.read_excel(os.path.join('dataset', f'train_{args.feature_col}.xlsx'))
-    train_df["label"] = train_df['problem_type'].map(slabel2idx)
-    train_df["label_name"] = train_df['label'].map(idx2pro)
     test_df = pd.read_excel(os.path.join('dataset', f'test_{args.feature_col}.xlsx'))
-    test_df["label"] = test_df['problem_type'].map(slabel2idx)
-    test_df["label_name"] = test_df['label'].map(idx2pro)
-    return train_df, test_df
+
+    # Expect long class names in problem_type; fit encoder on training set
+    le = LabelEncoder()
+    # Drop NA and ensure strings
+    train_labels = train_df['problem_type'].astype(str).fillna('Unknown').tolist()
+    le.fit(train_labels)
+
+    # Transform and store both index and original name
+    train_df['label'] = le.transform(train_df['problem_type'].astype(str).fillna('Unknown'))
+    train_df['label_name'] = train_df['problem_type'].astype(str).fillna('Unknown')
+
+    test_df['label'] = le.transform(test_df['problem_type'].astype(str).fillna('Unknown'))
+    test_df['label_name'] = test_df['problem_type'].astype(str).fillna('Unknown')
+
+    return train_df, test_df, le
 
 def get_model_and_tokenizer(args, device):
     if str(args.embedding).startswith('DroPTC'):
@@ -241,9 +312,10 @@ def get_dataloaders(train_df, test_df, tokenizer, args):
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     return merged_df, merged_loader, train_loader, test_loader
 
-def train(model, train_loader, test_loader, train_df, args, device):
-    # Compute class weights based on training data
-    class_weights = compute_class_weights(train_df['label'].tolist(), args.class_weight, num_classes=7)
+def train(model, train_loader, test_loader, train_df, args, device, class_map=None):
+    # Compute class weights based on training data (use human-readable names so
+    # mapping from class_map -> indices is unambiguous)
+    class_weights = compute_class_weights(train_df['label_name'].tolist(), args.class_weight, class_map=class_map)
     if class_weights is not None:
         class_weights = class_weights.to(device)
     
@@ -356,10 +428,16 @@ def report_results(prediction_df, preds_decoded, tests_decoded, workdir, args, b
     arguments_dict['best_epoch'] = best_epoch
     arguments_dict['best_val_f1'] = best_f1_epoch
     arguments_dict['best_val_acc'] = best_acc_epoch
+    # If a LabelEncoder was attached to args (added in main), include its classes
+    if hasattr(args, 'label_classes'):
+        arguments_dict['label_classes'] = args.label_classes
     with open(os.path.join(workdir, 'scenario_arguments.json'), 'w') as json_file:
         json.dump(arguments_dict, json_file, indent=4)
-    # Confusion matrix
-    class_names = [value for _, value in raw2pro.items()]
+    # Confusion matrix: prefer classes from args if present, else fallback
+    if hasattr(args, 'label_classes') and args.label_classes:
+        class_names = args.label_classes
+    else:
+        class_names = [value for _, value in raw2pro.items()]
     conf_matrix = confusion_matrix(prediction_df['label'].to_list(), prediction_df['pred'].to_list(), labels=class_names)
     plt.figure(figsize=(4, 3.5))
     sns.heatmap(conf_matrix, annot=True, xticklabels=class_names, yticklabels=class_names, fmt='d', cmap='YlGnBu', cbar=False, square=False)
@@ -377,7 +455,8 @@ def visualize_and_save(merged_loader, idx2pro, best_model, device, workdir, merg
 def interpretability_report(model, tokenizer, args, device, workdir):
     max_seq_length = 64
     test_set = pd.read_excel(os.path.join('dataset', f'test_sentence.xlsx'))
-    test_set["label"] = test_set['problem_type'].map(raw2pro)
+    # Expect problem_type to contain long class names; use them directly
+    test_set["label"] = test_set['problem_type'].astype(str).fillna('Unknown')
     print("Test set loaded successfully...")
     try:
         embedding_layer = get_embedding_layer(model.embedding_model)
@@ -448,12 +527,21 @@ def main():
     if os.path.exists(os.path.join(workdir, 'scenario_arguments.json')) and not args.overwrite:
         print('Scenario has been executed. Skipped!')
         return exit(0)
-    train_df, test_df = prepare_data(args)
+    train_df, test_df, label_encoder = prepare_data(args)
+    # Expose encoder classes on args so downstream reporting can save them
+    args.label_classes = label_encoder.classes_.tolist()
     embedding_model, tokenizer = get_model_and_tokenizer(args, device)
     merged_df, merged_loader, train_loader, test_loader = get_dataloaders(train_df, test_df, tokenizer, args)
     model_class = MODEL_REGISTRY[args.scenario]
     model = model_class(embedding_model, tokenizer, freeze_embedding=args.freeze_embedding).to(device)
-    best_model_state, best_epoch, best_f1_epoch, best_acc_epoch = train(model, train_loader, test_loader, train_df, args, device)
+    # Build class_map from LabelEncoder classes to ensure alignment
+    global pro2idx, idx2pro
+    pro_classes = label_encoder.classes_.tolist()
+    pro2idx = {name: idx for idx, name in enumerate(pro_classes)}
+    idx2pro = {idx: name for idx, name in enumerate(pro_classes)}
+    class_map = pro2idx
+
+    best_model_state, best_epoch, best_f1_epoch, best_acc_epoch = train(model, train_loader, test_loader, train_df, args, device, class_map=class_map)
     best_model = model_class(embedding_model, tokenizer, freeze_embedding=args.freeze_embedding).to(device)
     best_model.load_state_dict(best_model_state)
     prediction_df, preds_decoded, tests_decoded = evaluate(best_model, test_loader, test_df, args, device)
