@@ -1,0 +1,33 @@
+{
+    "feature_col": "sentence",
+    "scenario": "droptc",
+    "output_dir": "experiments",
+    "embedding": "DroPTC-all-mpnet-base-v2-sentence",
+    "encoder": "linear",
+    "dim_reduce": "pca-tsne",
+    "loss_fn": "focal",
+    "class_weight": "balanced",
+    "bidirectional": false,
+    "n_heads": 1,
+    "n_layers": 1,
+    "n_epochs": 20,
+    "batch_size": 8,
+    "seed": 99511865,
+    "freeze_embedding": true,
+    "save_model": false,
+    "overwrite": false,
+    "label_classes": [
+        "CommunicationIssue",
+        "HardwareFault",
+        "Normal",
+        "ParamViolation",
+        "RegulationViolation",
+        "SoftwareFault",
+        "SurroundingEnvironment"
+    ],
+    "device": "cuda",
+    "scenario_dir": "experiments/droptc/sentence/DroPTC-all-mpnet-base-v2-sentence/freeze/focal-balanced/99511865",
+    "best_epoch": 7,
+    "best_val_f1": 0.29876696766405964,
+    "best_val_acc": 0.3157894736842105
+}

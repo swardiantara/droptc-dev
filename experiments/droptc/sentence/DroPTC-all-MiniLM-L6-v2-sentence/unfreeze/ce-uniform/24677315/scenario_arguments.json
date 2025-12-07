@@ -5,6 +5,8 @@
     "embedding": "DroPTC-all-MiniLM-L6-v2-sentence",
     "encoder": "linear",
     "dim_reduce": "pca-tsne",
+    "loss_fn": "ce",
+    "class_weight": "uniform",
     "bidirectional": false,
     "n_heads": 1,
     "n_layers": 1,
@@ -13,9 +15,19 @@
     "seed": 24677315,
     "freeze_embedding": false,
     "save_model": false,
+    "overwrite": false,
+    "label_classes": [
+        "CommunicationIssue",
+        "HardwareFault",
+        "Normal",
+        "ParamViolation",
+        "RegulationViolation",
+        "SoftwareFault",
+        "SurroundingEnvironment"
+    ],
     "device": "cuda",
-    "scenario_dir": "experiments/droptc/sentence/DroPTC-all-MiniLM-L6-v2-sentence/unfreeze/24677315",
+    "scenario_dir": "experiments/droptc/sentence/DroPTC-all-MiniLM-L6-v2-sentence/unfreeze/ce-uniform/24677315",
     "best_epoch": 3,
-    "best_val_f1": 0.92844541375997,
-    "best_val_acc": 0.9282296650717703
+    "best_val_f1": 0.9190643286152501,
+    "best_val_acc": 0.9186602870813397
 }
