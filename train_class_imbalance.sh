@@ -1,9 +1,9 @@
 #!/bin/bash
-word_embeds=( DroPTC-all-mpnet-base-v2-sentence DroPTC-all-MiniLM-L6-v2-sentence )
-freezes=( true false )
+word_embeds=( all-mpnet-base-v2 all-MiniLM-L6 )
+freezes=( false )
 seeds=( 14298463 24677315 37622020 43782163 52680723 67351593 70681460 87212562 90995999 99511865 )
-losses=( ce focal )
-class_weights=( uniform balanced inverse )
+losses=( ce )
+class_weights=( balanced inverse )
 for embedding in "${word_embeds[@]}"; do
     for loss in "${losses[@]}"; do
         for class_weight in "${class_weights[@]}"; do
