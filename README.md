@@ -1,4 +1,4 @@
-# 🛰️ DroPTC
+# DroPTC
 <!-- _A Digital Forensics Framework for Drone Log Analysis_ -->
 
 This repository accompanies the research paper:  
@@ -13,7 +13,7 @@ It contains:
 
 ---
 
-## 📦 Installation
+## Installation
 
 Clone the repository and install dependencies:
 
@@ -31,7 +31,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## 🔬 Reproducing Experimental Results
+## Reproducing Experimental Results
 
 We provide a single bash script to reproduce all experimental scenarios:
 ```bash
@@ -48,11 +48,11 @@ Analysis of results is available in the `notebooks/` folder:
 2. Best-performing model analysis
 3. Feature attribution heatmaps
 
-## 🛠️ Running the CLI Tool
+## Running the CLI Tool
 
 The forensic tool is provided under the `src/cli/` folder. It supports per-evidence log analysis and outputs timelines + reports. See the dedicated [CLI README](src/cli/README.md) for usage instructions.
 
-## 📂 Repository Structure
+## Repository Structure
 ```
 dropt/
 │

@@ -7,16 +7,22 @@ import matplotlib.pyplot as plt
 # --- CONFIGURATION ---
 # 1. Add the file paths for each model's attribution data
 ATTRIBUTION_FILES = {
-    'DroneSBERT': os.path.join('droptc', 'sentence', 'drone-sbert', 'unfreeze', '87212562', 'attributions_sentence.json'),
-    'BERT-base': os.path.join('droptc', 'sentence', 'bert-base-uncased', 'unfreeze', '70681460', 'attributions_sentence.json'),
-    'NeoBERT': os.path.join('droptc', 'sentence', 'neo-bert', 'unfreeze', '14298463', 'attributions_sentence.json'),
-    'ModernBERT': os.path.join('droptc', 'sentence', 'modern-bert', 'unfreeze', '70681460', 'attributions_sentence.json'),
+    # 'MiniLM': os.path.join('experiments', 'droptc', 'sentence', 'all-MiniLM-L6-v2', 'unfreeze', '67351593', 'attributions_sentence.json'),
+    # 'MiniLM*': os.path.join('experiments', 'droptc', 'sentence', 'DroPTC-all-MiniLM-L6-v2-sentence', 'unfreeze', '99511865', 'attributions_sentence.json'),
+    # 'MPNet': os.path.join('experiments', 'droptc', 'sentence', 'all-mpnet-base-v2', 'unfreeze', '24677315', 'attributions_sentence.json'),
+    # 'MPNet*': os.path.join('experiments', 'droptc', 'sentence', 'DroPTC-all-mpnet-base-v2-sentence', 'unfreeze', '87212562', 'attributions_sentence.json'),
+    # 'BERT-base': os.path.join('experiments', 'droptc', 'sentence', 'bert-base-uncased', 'unfreeze', '52680723', 'attributions_sentence.json'),
+    # 'NeoBERT': os.path.join('experiments', 'droptc', 'sentence', 'neo-bert', 'unfreeze', '14298463', 'attributions_sentence.json'),
+    # 'ModernBERT': os.path.join('experiments', 'droptc', 'sentence', 'modern-bert', 'unfreeze', '87212562', 'attributions_sentence.json'),
+    'DroPTC': os.path.join('experiments', 'droptc', 'sentence', 'DroPTC-all-mpnet-base-v2-sentence', 'unfreeze', 'ce-inverse', '37622020', 'attributions_sentence.json'),
+    'DroPTC-WoCW': os.path.join('experiments', 'droptc', 'sentence', 'DroPTC-all-MiniLM-L6-v2-sentence', 'unfreeze', 'ce-uniformold', '87212562', 'attributions_sentence.json'),
+    'DroneLog': os.path.join('experiments', 'dronelog', 'sentence', 'DroPTC-all-mpnet-base-v2-sentence', 'freeze', 'ce-uniform', '14298463', 'attributions_sentence.json'),
+    'DroLoVe': os.path.join('experiments', 'drolove', 'sentence', 'bert-base-uncased', 'unfreeze', 'ce-uniform', '14298463', 'attributions_sentence.json'),
+    'NeuralLog': os.path.join('experiments', 'neurallog', 'sentence', 'bert-base-uncased', 'unfreeze', 'ce-uniform', '70681460', 'attributions_sentence.json'),
+    'TransSentLog': os.path.join('experiments', 'transsentlog', 'sentence', 'bert-base-uncased', 'unfreeze', 'ce-uniform', '14298463', 'attributions_sentence.json'),
 }
 
-# 2. Set the name for the output directory
-OUTPUT_DIR = os.path.join('..', 'visualization', 'heatmap')
-
-# --- SCRIPT ---
+OUTPUT_DIR = os.path.join('visualization', 'word-importance-compare')
 
 def get_all_sample_indices(filepath: str) -> list:
     """Scans a file to find all unique sample indices."""
@@ -96,12 +102,12 @@ def main():
         
         # --- Visualization ---
         # fig, ax = plt.subplots(figsize=(max(12, len(words) * 0.8), max(4, len(model_names) * 0.6)))
-        fig, ax = plt.subplots(figsize=(15, 1))
+        fig, ax = plt.subplots(figsize=(15, 1.75))
         sns.heatmap(
             heatmap_data,
             xticklabels=words,
             yticklabels=model_names,
-            cmap="rocket_r", # Diverging colormap (Red-White-Blue)
+            cmap="Greens", # Diverging colormap (Red-White-Blue)
             annot=True,   # Show numeric values
             fmt=".2f",
             annot_kws={"size": 8.5},
@@ -118,7 +124,7 @@ def main():
         )
         
         # ax.set_title(f"Attribution Comparison for Sample {index} (Label: {true_label})", fontsize=16)
-        ax.set_xlabel("Log Message", fontsize=10)
+        # ax.set_xlabel("Log Sentence", fontsize=10)
         ax.set_ylabel("")
         plt.xticks()
         plt.yticks()
