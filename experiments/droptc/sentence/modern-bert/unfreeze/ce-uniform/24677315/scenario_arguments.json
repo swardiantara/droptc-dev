@@ -1,0 +1,21 @@
+{
+    "feature_col": "sentence",
+    "scenario": "droptc",
+    "output_dir": "experiments",
+    "embedding": "modern-bert",
+    "encoder": "linear",
+    "dim_reduce": "pca-tsne",
+    "bidirectional": false,
+    "n_heads": 1,
+    "n_layers": 1,
+    "n_epochs": 20,
+    "batch_size": 8,
+    "seed": 24677315,
+    "freeze_embedding": false,
+    "save_model": false,
+    "device": "cuda",
+    "scenario_dir": "experiments/droptc/sentence/modern-bert/unfreeze/24677315",
+    "best_epoch": 4,
+    "best_val_f1": 0.9034956423610372,
+    "best_val_acc": 0.9043062200956937
+}

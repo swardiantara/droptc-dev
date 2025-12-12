@@ -1,0 +1,21 @@
+{
+    "feature_col": "sentence",
+    "scenario": "droptc",
+    "output_dir": "experiments",
+    "embedding": "all-mpnet-base-v2",
+    "encoder": "linear",
+    "dim_reduce": "pca-tsne",
+    "bidirectional": false,
+    "n_heads": 1,
+    "n_layers": 1,
+    "n_epochs": 20,
+    "batch_size": 8,
+    "seed": 67351593,
+    "freeze_embedding": false,
+    "save_model": false,
+    "device": "cuda",
+    "scenario_dir": "experiments/droptc/sentence/all-mpnet-base-v2/unfreeze/67351593",
+    "best_epoch": 20,
+    "best_val_f1": 0.9201671961180519,
+    "best_val_acc": 0.9186602870813397
+}

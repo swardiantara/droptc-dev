@@ -1,0 +1,21 @@
+{
+    "feature_col": "sentence",
+    "scenario": "neurallog",
+    "output_dir": "experiments",
+    "embedding": "bert-base-uncased",
+    "encoder": "linear",
+    "dim_reduce": "pca-tsne",
+    "bidirectional": false,
+    "n_heads": 1,
+    "n_layers": 1,
+    "n_epochs": 20,
+    "batch_size": 8,
+    "seed": 70681460,
+    "freeze_embedding": false,
+    "save_model": false,
+    "device": "cuda",
+    "scenario_dir": "experiments/neurallog/sentence/bert-base-uncased/unfreeze/70681460",
+    "best_epoch": 3,
+    "best_val_f1": 0.9333782659310289,
+    "best_val_acc": 0.9330143540669856
+}
