@@ -10,6 +10,8 @@ cp experiments/droptc/sentence/neo-bert/unfreeze/14298463/sentence_pytorch_model
 python -m src.droptc.train_classifier --scenario droptc --embedding DroPTC-all-mpnet-base-v2-sentence --seed 87212562 --feature_col sentence --n_epochs 20 --save_model --overwrite
 cp experiments/droptc/sentence/DroPTC-all-mpnet-base-v2-sentence/unfreeze/87212562/sentence_pytorch_model.pt src/cli/model/pytorch_model_mpnet.pt
 python -m src.droptc.train_classifier --scenario droptc --embedding DroPTC-all-MiniLM-L6-v2-sentence --seed 99511865 --feature_col sentence --n_epochs 20 --save_model --overwrite
+cp experiments/droptc/sentence/DroPTC-all-MiniLM-L6-v2-sentence/unfreeze/99511865/sentence_pytorch_model.pt src/cli/model/pytorch_model_wocw.pt
+python -m src.droptc.train_classifier --scenario droptc --embedding DroPTC-all-MiniLM-L6-v2-sentence --seed 87212562 --feature_col sentence --class_weight inverse --n_epochs 20 --save_model --overwrite
 cp experiments/droptc/sentence/DroPTC-all-MiniLM-L6-v2-sentence/unfreeze/99511865/sentence_pytorch_model.pt src/cli/model/pytorch_model.pt
 
 python -m src.droptc.train_classifier --scenario drolove --embedding bert-base-uncased --seed 90995999 --feature_col sentence --n_epochs 20 --save_model --overwrite
